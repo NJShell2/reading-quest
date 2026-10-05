@@ -7,15 +7,18 @@
        monsters, worlds, bosses, shop, spellsPerClass... }
    Question object contract (what generators return):
      { kind, prompt, speak, choices, answer, letters, passage,
-       timeMs, hint }
+       timeMs, hint, tier }
      kind: "choice" | "build" | "flash" | "story"
      - choice: prompt + choices[4], answer = index of correct
      - build:  prompt + speak(word); letters = shuffled tiles,
                answer = the word string
      - flash:  like choice but with timeMs countdown (fluency)
      - story:  passage shown, then prompt + choices, answer index
-   Generators: gen(diff, helpers) where diff = 1,2,3.
-   Beasts always train at diff 3 with double XP (engine-side).
+     Every question is tagged with its ladder tier (engine sets q.tier).
+   Generators: gen(tier, helpers) where tier = 1..pack.tiers on the long
+   ladder (grades 1 through college). Use helpers.band(tier, bands) to
+   pick the right content band; tiers above the authored content reuse
+   the hardest band until harder content is written.
    ============================================================ */
 (function () {
   "use strict";
@@ -32,6 +35,16 @@
   function sample(rng, arr, n, avoid) {
     var pool = arr.filter(function (w) { return w !== avoid; });
     return shuffle(rng, pool).slice(0, n);
+  }
+  /* Pick the content band for a ladder tier. bands = [[maxTier, bank], ...]
+     in ascending order. Tiers above the last band reuse the hardest bank:
+     the ladder is long (grades 1 to college) and content fills in over time,
+     so the schema never needs a rewrite to hold harder items later. */
+  function band(tier, bands) {
+    for (var i = 0; i < bands.length; i++) {
+      if (tier <= bands[i][0]) return bands[i][1];
+    }
+    return bands[bands.length - 1][1];
   }
 
   /* ---------------- shared word banks ---------------- */
@@ -161,20 +174,20 @@
       ],
       familiar: { egg: "Rune Egg", baby: "Bookwyrm", adult: "Tome Drake", icons: ["🥚", "🐛", "🐉"] },
       gens: [
-        function buildWord(diff, h) {
-          var bank = diff >= 3 ? MULTI.concat(BLEND) : diff === 2 ? DIGRAPH.concat(BLEND) : CVC;
+        function buildWord(tier, h) {
+          var bank = band(tier, [[2, CVC], [4, DIGRAPH], [6, BLEND.concat(SILENT_E)], [8, MULTI], [1e9, MULTI]]);
           var w = h.pick(bank);
           return { kind: "build", prompt: "Sound it out, then build the word:", speak: w,
                    letters: h.shuffle(w.split("")), answer: w };
         },
-        function hearWord(diff, h) {
-          var bank = diff >= 3 ? MULTI : diff === 2 ? DIGRAPH.concat(SILENT_E) : CVC;
+        function hearWord(tier, h) {
+          var bank = band(tier, [[2, CVC], [4, DIGRAPH.concat(SILENT_E)], [6, BLEND.concat(MULTI)], [1e9, MULTI]]);
           var w = h.pick(bank);
           var opts = h.shuffle([w].concat(h.sample(bank, 3, w)));
           return { kind: "choice", prompt: "Listen... which word did you hear?", speak: w,
                    choices: opts, answer: opts.indexOf(w) };
         },
-        function alienWord(diff, h) {
+        function alienWord(tier, h) {
           var w = h.pick(NONSENSE);
           var opts = h.shuffle([w].concat(h.sample(NONSENSE, 3, w)));
           return { kind: "choice", prompt: "An alien word! Sound it out: which one matches what you hear?",
@@ -196,19 +209,19 @@
       ],
       familiar: { egg: "Star Egg", baby: "Blinkbat", adult: "Gaze Griffin", icons: ["🥚", "🦇", "🦅"] },
       gens: [
-        function blastWord(diff, h) {
-          var bank = diff >= 3 ? IRREGULAR : SIGHT;
+        function blastWord(tier, h) {
+          var bank = band(tier, [[8, SIGHT], [1e9, IRREGULAR]]);
           var w = h.pick(bank);
           var opts = h.shuffle([w].concat(h.sample(bank, 3, w)));
           return { kind: "choice", prompt: "Blast the word you hear!", speak: w,
                    choices: opts, answer: opts.indexOf(w) };
         },
-        function quickMatch(diff, h) {
-          var bank = diff >= 3 ? IRREGULAR : SIGHT;
+        function quickMatch(tier, h) {
+          var bank = band(tier, [[8, SIGHT], [1e9, IRREGULAR]]);
           var w = h.pick(bank);
           var opts = h.shuffle([w].concat(h.sample(bank, 3, w)));
           return { kind: "flash", prompt: "Quick! Tap the matching word:", speak: w,
-                   choices: opts, answer: opts.indexOf(w), timeMs: diff >= 3 ? 6000 : 9000 };
+                   choices: opts, answer: opts.indexOf(w), timeMs: Math.max(4000, 9500 - tier * 500) };
         }
       ]
     },
@@ -226,19 +239,19 @@
       ],
       familiar: { egg: "Feather Egg", baby: "Zipwing", adult: "Gale Falcon", icons: ["🥚", "🐤", "🦅"] },
       gens: [
-        function speedRead(diff, h) {
-          var bank = diff >= 3 ? MULTI.concat(IRREGULAR) : SIGHT.concat(CVC);
+        function speedRead(tier, h) {
+          var bank = band(tier, [[4, SIGHT.concat(CVC)], [8, BLEND.concat(DIGRAPH)], [1e9, MULTI.concat(IRREGULAR)]]);
           var w = h.pick(bank);
           var opts = h.shuffle([w].concat(h.sample(bank, 3, w)));
           return { kind: "flash", prompt: "Read it FAST, then tap it!", speak: w,
-                   choices: opts, answer: opts.indexOf(w), timeMs: diff >= 3 ? 5000 : 8000 };
+                   choices: opts, answer: opts.indexOf(w), timeMs: Math.max(3000, 8500 - tier * 400) };
         },
-        function smoothPick(diff, h) {
-          var bank = diff >= 3 ? BLEND.concat(DIGRAPH) : CVC;
+        function smoothPick(tier, h) {
+          var bank = band(tier, [[4, CVC], [8, BLEND.concat(DIGRAPH)], [1e9, MULTI]]);
           var w = h.pick(bank);
           var opts = h.shuffle([w].concat(h.sample(bank, 3, w)));
           return { kind: "flash", prompt: "Smooth and quick: which word did you hear?", speak: w,
-                   choices: opts, answer: opts.indexOf(w), timeMs: diff >= 3 ? 5000 : 8000 };
+                   choices: opts, answer: opts.indexOf(w), timeMs: Math.max(3000, 8500 - tier * 400) };
         }
       ]
     },
@@ -256,16 +269,16 @@
       ],
       familiar: { egg: "Seed Egg", baby: "Sproutling", adult: "Elder Treantling", icons: ["🥚", "🌱", "🌳"] },
       gens: [
-        function wordMeaning(diff, h) {
-          var bank = diff >= 3 ? MORPH : VOCAB;
+        function wordMeaning(tier, h) {
+          var bank = band(tier, [[8, VOCAB], [1e9, MORPH]]);
           var pair = h.pick(bank);
           var others = h.sample(bank, 3, pair).map(function (p) { return p[1]; });
           var opts = h.shuffle([pair[1]].concat(others));
           return { kind: "choice", prompt: "What does \"" + pair[0] + "\" mean?",
                    choices: opts, answer: opts.indexOf(pair[1]) };
         },
-        function reverseMeaning(diff, h) {
-          var bank = diff >= 3 ? MORPH : VOCAB;
+        function reverseMeaning(tier, h) {
+          var bank = band(tier, [[8, VOCAB], [1e9, MORPH]]);
           var pair = h.pick(bank);
           var others = h.sample(bank, 3, pair).map(function (p) { return p[0]; });
           var opts = h.shuffle([pair[0]].concat(others));
@@ -288,13 +301,13 @@
       ],
       familiar: { egg: "Melody Egg", baby: "Humbird", adult: "Chorus Phoenix", icons: ["🥚", "🐦", "🔥"] },
       gens: [
-        function storyQ(diff, h) {
+        function storyQ(tier, h) {
           var s = h.pick(STORIES);
           var q = h.pick(s.qs);
           return { kind: "story", passage: s.text, prompt: q.q,
                    choices: q.c, answer: q.a };
         },
-        function sequenceIt(diff, h) {
+        function sequenceIt(tier, h) {
           var s = h.pick(STORIES);
           var first = h.pick([true, false]);
           var correct = first ? s.ev[0] : s.ev[2];
@@ -321,7 +334,7 @@
       ],
       familiar: { egg: "Bell Egg", baby: "Chimekit", adult: "Resonance Tiger", icons: ["🥚", "🐱", "🐯"] },
       gens: [
-        function rhymeTime(diff, h) {
+        function rhymeTime(tier, h) {
           var set = h.pick(RHYMES);
           var word = set[0], rhymes = set[1];
           var correct = h.pick(rhymes);
@@ -331,7 +344,7 @@
           return { kind: "choice", prompt: "Which word rhymes with \"" + word + "\"?",
                    speak: word, choices: opts, answer: opts.indexOf(correct) };
         },
-        function firstSound(diff, h) {
+        function firstSound(tier, h) {
           var w = h.pick(CVC.concat(SIGHT.slice(0, 20)));
           var s = w[0];
           var pool = "bcdfghjklmnpqrstvwyz".split("");
@@ -339,7 +352,7 @@
           return { kind: "choice", prompt: "What is the FIRST sound in \"" + w + "\"?",
                    speak: w, choices: opts, answer: opts.indexOf(s) };
         },
-        function blendIt(diff, h) {
+        function blendIt(tier, h) {
           var w = h.pick(CVC);
           var spoken = w.split("").join(" ... ");
           var opts = h.shuffle([w].concat(h.sample(CVC, 3, w)));
@@ -386,11 +399,11 @@
   var WORLDS = [
     { id: "whisperwood", name: "Whisperwood", icon: "🌲", desc: "Where words grow on trees.",
       nodes: [
-        { id: "w1n1", name: "Rustling Path", monster: "letterbat", diff: 1 },
-        { id: "w1n2", name: "Goblin Clearing", monster: "grumblegoblin", diff: 1 },
-        { id: "w1n3", name: "Whispering Hollow", monster: "letterbat", diff: 2 },
-        { id: "w1n4", name: "Snatchwing Nest", monster: "snatchwing", diff: 2 },
-        { id: "w1n5", name: "Garbler's Cave", monster: "mumblemouth", diff: 2, boss: true }
+        { id: "w1n1", name: "Rustling Path", monster: "letterbat" },
+        { id: "w1n2", name: "Goblin Clearing", monster: "grumblegoblin" },
+        { id: "w1n3", name: "Whispering Hollow", monster: "letterbat" },
+        { id: "w1n4", name: "Snatchwing Nest", monster: "snatchwing" },
+        { id: "w1n5", name: "Garbler's Cave", monster: "mumblemouth", boss: true }
       ] }
   ];
 
@@ -420,11 +433,37 @@
     monsters: MONSTERS,
     worlds: WORLDS,
     shop: SHOP,
-    helpers: { pick: pick, shuffle: shuffle, sample: sample },
+    helpers: { pick: pick, shuffle: shuffle, sample: sample, band: band },
     /* XP needed (cumulative) to reach each level, index = level */
     xpTable: [0, 0, 30, 80, 150, 240, 350, 480, 630, 810, 1000],
     maxLevel: 10,
     beastUnlockLevel: 5,
-    beastXpMult: 2
+    beastXpMult: 2,
+    /* ---- the long ladder: grades 1 through college ----
+       32 tiers, two per grade. Every generated question is tagged with
+       its tier. v1 reading content is honestly authored for tiers 1-8
+       (about grades 1-4); higher tiers reuse the hardest available banks
+       until college-level content is written. No schema change needed. */
+    tiers: 32,
+    tierLabel: function (t) {
+      var g = Math.ceil(t / 2), sub = (t % 2 === 1) ? "Early" : "Late";
+      if (g <= 12) return "Grade " + g + " " + sub;
+      return "College Year " + (g - 12) + " " + sub;
+    },
+    beastStartTier: 4,
+    /* ---- adaptive pacing calibration (per question kind) ----
+       fastMs: at or below this the answer felt instant for its kind.
+       slowMs: at or above this the answer was a real struggle.
+       A story takes longer to read than a word takes to tap, so the
+       numbers differ per kind instead of one raw number everywhere. */
+    pacing: {
+      window: 12,
+      evalEvery: 6,
+      cooldown: 8,
+      whizAcc: 0.92,
+      stompAcc: 0.45,
+      fastMs: { choice: 2500, build: 10000, flash: 2500, story: 30000, default: 4000 },
+      slowMs: { choice: 15000, build: 45000, flash: 12000, story: 90000, default: 20000 }
+    }
   };
 })();
