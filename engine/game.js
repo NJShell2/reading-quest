@@ -132,6 +132,7 @@
           '<div class="rq-heroinfo"><h2>' + def.name + '</h2>' +
           '<div class="rq-strategy">' + def.strategy + '</div>' +
           '<div class="rq-lvlbig">Level ' + h.level + '</div>' +
+          '<div class="rq-strategy">📈 Training tier: ' + window.RQAdaptive.tierLabel(h.tier || 1) + '</div>' +
           '<div class="rq-xpbar"><div class="rq-xpfill" style="width:' +
             Math.min(100, xpHave / xpSpan * 100) + '%"></div></div>' +
           '<div class="rq-stats">❤️ ' + S.maxHp(id) + ' &nbsp; ⚔️ ' + S.power(id) +
@@ -212,7 +213,7 @@
       var self = this;
       showScreen("screen-battle");
       window.RQBattles.start({
-        heroId: heroId, monster: mon, diff: node.diff,
+        heroId: heroId, monster: mon,
         onDone: function (res) { self.afterBattle(res, mon); }
       });
     },
@@ -243,6 +244,12 @@
         if (lv === 7 && h.familiarStage >= 3) html += '<div class="rq-newspell">' + def.familiar.icons[2] + ' ' + def.familiar.baby + ' evolved into ' + def.familiar.adult + '!</div>';
       });
       if (res.boss && res.outro) html += '<p class="rq-bossquote">"' + res.outro + '"</p>';
+      if (res.tierMove) {
+        var tLabel = window.RQAdaptive.tierLabel(res.tierMove.tier);
+        html += res.tierMove.dir > 0
+          ? '<div class="rq-newspell">📈 New Heights! Now training at ' + tLabel + '.</div>'
+          : '<div class="rq-newspell">🌿 Secret Side Quest: now training at ' + tLabel + '.</div>';
+      }
       html += '<button class="rq-bigbtn" id="r-ok">Continue ➜</button>';
       var ov2 = modal(html);
       if (res.levelsGained.length) A.SFX.levelup();
