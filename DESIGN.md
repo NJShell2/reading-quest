@@ -49,4 +49,24 @@ Each world ends with a boss guarding a Keystone page of the Great Book. Original
 
 ## Architecture (for the Science/Social Studies/etc. expansion)
 
-The ENGINE never contains subject content. `engine/` holds: game screens and navigation, the battle loop, question renderers, progression math, shop, saves, audio. `content/` holds packs: `reading-pack.js` defines classes, beasts, spells, items, familiars, worlds, bosses, monsters, word banks, and question generators. A future subject ships as one new file (e.g. `science-pack.js`) implementing the same pack interface; the engine loads whichever pack is active. Question renderers are generic (choice, build-a-word, timed flash, story question), so new subjects reuse them.
+The ENGINE never contains subject content. `engine/` holds: game screens and navigation, the battle loop, question renderers, progression math, shop, saves, audio, and the adaptive difficulty engine. `content/` holds packs: `reading-pack.js` defines classes, beasts, spells, items, familiars, worlds, bosses, monsters, word banks, question generators, the tier ladder, and pacing calibration. A future subject ships as one new file (e.g. `science-pack.js`, `business-pack.js`) implementing the same pack interface; the engine loads whichever pack is active. Question renderers are generic (choice, build-a-word, timed flash, story question), so new subjects reuse them.
+
+## Adaptive difficulty: the flow-state engine (`engine/adaptive.js`)
+
+This is engine-level, so every future subject gets it free. It keeps each player in the zone of proximal development: challenged to grow without being crushed.
+
+**How it works.** Every hero trains on the pack's long tier ladder, starting at tier 1. After every answered question, the engine records `{correct, responseMs, questionKind}` into a rolling window (last 12 answers, evaluated every 6). It tracks BOTH accuracy and speed:
+
+- **WHIZING** (accuracy at least 92% AND very fast): the hero advances a tier early. No grinding through material they have mastered.
+- **STEADY** (solid accuracy with real effort): hold the tier. This is the growth zone; most play lives here.
+- **STOMPED** (accuracy at most 45% AND very slow): drop one tier. This is framed in-game as a **Secret Side Quest**: a hidden training trail the wisest heroes take. It is never a demotion, never a failure message, never "too hard". The copy is checked by an automated banned-word list (`demot*`, `fail*`, `too hard`, ...).
+
+**Per-kind calibration.** "Fast" means something different for tapping a word vs reading a whole story, so Nicholas's extremes (sub-second answers, hour-long struggles) are NOT applied as one raw number. Each answer is normalized to a 0..1 speed score against its own kind's fast/slow marks, then averaged across the window. The reading pack calibrates: choice (2.5s / 15s), build-a-word (10s / 45s), timed flash (2.5s / 12s), story (30s / 90s). A future pack (say, Business) sets its own numbers for its own question kinds.
+
+**Anti yo-yo rules.** A tier change needs a full 6-answer evaluation sample, then an 8-answer cooldown before the next change can fire, and the window resets after every move. Tiers clamp to 1..pack.tiers. Beasts enter the ladder at `beastStartTier` (tier 4 for reading) and adapt from there, keeping their double XP.
+
+## The long ladder: grades 1 through college
+
+The engine's difficulty scale is a LONG ladder, not a short one: 32 tiers, two per grade, from Grade 1 Early all the way to College Year 4 Late. The pack schema carries `tiers`, `tierLabel(tier)`, and per-tier content bands. Every content item (every generated question) is tagged with its tier (`q.tier`), and the adaptive engine moves players along the full ladder.
+
+**Honest v1 scope.** v1 ships the complete ladder architecture plus a starter content set honestly authored for tiers 1-8 (about grades 1-4). Tiers above the authored content reuse the hardest available bank for their class, so the game stays playable and challenging while college-level content is written over time. When that content arrives, it slots into the existing bands with zero schema changes and zero engine changes.
