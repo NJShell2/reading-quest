@@ -123,8 +123,9 @@
         paint(); renderSpells(); renderItems();
       }
 
-      /* ---- question generation ---- */
+      /* ---- question generation: hero's adaptive tier picks the content ---- */
       function makeQuestion() {
+        var tier = S.hero(heroId).tier || 1;
         var gens = def.gens || pack().classes[0].gens;
         var g = gens[ri(0, gens.length - 1)];
         var H = pack().helpers;
@@ -133,7 +134,9 @@
           shuffle: function (a) { return H.shuffle(Math.random, a); },
           sample: function (a, n, avoid) { return H.sample(Math.random, a, n, avoid); }
         };
-        return g(opts.diff || 1, helpers);
+        var q = g(tier, helpers);
+        q.tier = tier;
+        return q;
       }
 
       /* ---- player turn ---- */
@@ -142,8 +145,12 @@
         A.ensure(); A.SFX.click();
         $("b-spells").innerHTML = ""; $("b-items").innerHTML = "";
         say("Cast " + sp.name + "! Answer to unleash it...");
-        window.RQQuestions.ask(qEl, makeQuestion()).then(function (res) {
+        var q = makeQuestion();
+        var t0 = Date.now();
+        window.RQQuestions.ask(qEl, q).then(function (res) {
           qEl.innerHTML = "";
+          var ms = Date.now() - t0;
+          var move = window.RQAdaptive.record(heroId, { correct: res.correct, ms: ms, kind: q.kind });
           if (res.correct) {
             state.streak++; state.best = Math.max(state.best, state.streak);
             var elixirMult = S.data.elixirTurns > 0 ? 2 : 1;
@@ -171,11 +178,30 @@
           Object.keys(state.cooldowns).forEach(function (k) {
             if (state.cooldowns[k] > 0) state.cooldowns[k]--;
           });
-          if (state.monHp <= 0) { victory(); return; }
-          setTimeout(function () {
-            if (!state.over) { renderSpells(); renderItems(); }
-          }, 700);
+          if (state.monHp <= 0) { victory(move); return; }
+          if (move) { showTierModal(move, continueTurn); return; }
+          continueTurn();
+        });
+
+        function continueTurn() {
+          setTimeout(function () { if (!state.over) { renderSpells(); renderItems(); } }, 700);
           setTimeout(function () { if (!state.over) enemyTurn(); }, 1100);
+        }
+      }
+
+      /* ---- adaptive tier change: always positive framing ---- */
+      function showTierModal(move, done) {
+        var copy = window.RQAdaptive.copyFor(move);
+        if (move.dir > 0) A.SFX.levelup(); else A.SFX.heal();
+        var ov = document.createElement("div");
+        ov.className = "rq-overlay";
+        ov.innerHTML =
+          '<div class="rq-modal"><div class="rq-bossintro">' + copy.icon + "</div>" +
+          "<h2>" + copy.title + "</h2><p>" + copy.body + "</p>" +
+          '<button class="rq-bigbtn" id="rq-tier-ok">' + copy.cta + " ➜</button></div>";
+        document.body.appendChild(ov);
+        $("rq-tier-ok").addEventListener("click", function () {
+          ov.remove(); done();
         });
       }
 
@@ -197,7 +223,7 @@
       }
 
       /* ---- endings ---- */
-      function victory() {
+      function victory(move) {
         state.over = true;
         A.SFX.victory();
         var xp = mon.xp, coins = ri(mon.coins[0], mon.coins[1]);
@@ -219,7 +245,8 @@
           showChest(coins, function () {
             opts.onDone({ victory: true, xp: xp, coins: coins,
                           levelsGained: gained, newBeasts: newly,
-                          boss: !!mon.boss, outro: mon.outro });
+                          boss: !!mon.boss, outro: mon.outro,
+                          tierMove: move || null });
           });
         }, 1200);
       }
