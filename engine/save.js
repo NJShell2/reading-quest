@@ -8,11 +8,12 @@
 
   function freshHero() {
     return { xp: 0, level: 1, bonusPower: 0, bonusHp: 0,
-             familiarStage: 0, battlesWon: 0 };
+             familiarStage: 0, battlesWon: 0,
+             tier: 1, recent: [], answersSinceChange: 0, sinceEval: 0 };
   }
 
   function fresh() {
-    var s = { v: 1, coins: 25, activeHero: "knight",
+    var s = { v: 2, coins: 25, activeHero: "knight",
               heroes: {}, beastsUnlocked: [], bossesBeaten: [],
               chestsOpened: 0, bestStreak: 0,
               items: { potion: 1, crystal: 0, elixir: 0, lucky: 0 },
@@ -29,7 +30,21 @@
         var raw = window.localStorage.getItem(KEY);
         if (raw) {
           var s = JSON.parse(raw);
-          if (s && s.v === 1) { this.data = s; return s; }
+          if (s && s.v === 2) { this.data = s; return s; }
+          if (s && s.v === 1) {
+            /* migrate v1 -> v2: add adaptive-difficulty fields */
+            Object.keys(s.heroes).forEach(function (id) {
+              var hh = s.heroes[id];
+              if (hh.tier === undefined) hh.tier = 1;
+              if (!hh.recent) hh.recent = [];
+              hh.answersSinceChange = hh.answersSinceChange || 0;
+              hh.sinceEval = hh.sinceEval || 0;
+            });
+            s.v = 2;
+            this.data = s;
+            this.write();
+            return s;
+          }
         }
       } catch (e) {}
       this.data = fresh();
@@ -58,7 +73,7 @@
         var base = pack().classes.filter(function (x) { return x.id === b.baseClass; })[0];
         return { id: b.id, name: b.name, title: b.name, strategy: base.strategy,
                  desc: b.desc, icon: b.icon, color: base.color,
-                 hp: b.hp, power: b.power, spells: base.spells,
+                 hp: b.hp, power: b.power, spells: base.spells, gens: base.gens,
                  familiar: base.familiar, beast: true, baseId: b.baseClass };
       }
       return null;
@@ -97,6 +112,8 @@
         if (self.data.beastsUnlocked.indexOf(b.id) === -1 &&
             self.hero(b.baseClass).level >= pack().beastUnlockLevel) {
           self.data.beastsUnlocked.push(b.id);
+          /* beasts enter the ladder above the basics, still adaptive */
+          self.hero(b.id).tier = pack().beastStartTier || 4;
           newly.push(b.id);
         }
       });
