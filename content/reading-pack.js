@@ -393,7 +393,29 @@
     { id: "mumblemouth", name: "MUMBLEMOUTH", icon: "👹", hp: 120, power: 8, xp: 80, coins: [40, 70],
       boss: true,
       intro: "I am MUMBLEMOUTH, the Garbler! I mumble every sound and garble every word! None shall pass!",
-      outro: "Nooo... my mumbles... are... clear... The first page of the Great Book is yours, hero!" }
+      outro: "Nooo... my mumbles... are... clear... The first page of the Great Book is yours, hero!" },
+    /* ---- World 2: Murkfen Marsh (sight words) ---- */
+    { id: "miremoth", name: "Mire Moth", icon: "🦋", hp: 52, power: 6, xp: 32, coins: [18, 34],
+      rescuable: true, rarity: "Common",
+      petStats: { power: 3, hearts: 10, magic: 12, speed: 8 } },
+    { id: "bogblur", name: "Bogblur", icon: "🐸", hp: 60, power: 7, xp: 36, coins: [20, 36] },
+    { id: "fogfiend", name: "Fogfiend", icon: "👻", hp: 68, power: 8, xp: 42, coins: [22, 40] },
+    { id: "siltslink", name: "Silt Slink", icon: "🦎", hp: 76, power: 9, xp: 48, coins: [24, 44] },
+    { id: "wipeout-wraith", name: "WIPEOUT WRAITH", icon: "🌪️", hp: 230, power: 12, xp: 150, coins: [70, 110],
+      boss: true,
+      intro: "I am the WIPEOUT WRAITH! I wipe whole words off the page! Sight words vanish where I pass!",
+      outro: "My winds... fading... The second page of the Great Book is yours. Read it well..." },
+    /* ---- World 3: Gloomhollow (fluency) ---- */
+    { id: "sluggard", name: "Sluggard", icon: "🐌", hp: 88, power: 10, xp: 56, coins: [28, 50],
+      rescuable: true, rarity: "Uncommon",
+      petStats: { power: 4, hearts: 14, magic: 14, speed: 4 } },
+    { id: "drawlbat", name: "Drawlbat", icon: "🦇", hp: 96, power: 11, xp: 62, coins: [30, 54] },
+    { id: "turtlehex", name: "Turtlehex", icon: "🐢", hp: 104, power: 12, xp: 68, coins: [32, 58] },
+    { id: "drowsydrake", name: "Drowsy Drake", icon: "🐲", hp: 112, power: 13, xp: 74, coins: [34, 62] },
+    { id: "the-slowdown", name: "THE SLOWDOWN", icon: "🐌👑", hp: 340, power: 16, xp: 240, coins: [110, 170],
+      boss: true,
+      intro: "I am THE SLOWDOWN. I drag every reader down to a crawl. You will never finish a page in time...",
+      outro: "So... fast... The final page is yours. The Great Book is whole again. You read like the wind!" }
   ];
 
   var WORLDS = [
@@ -404,6 +426,24 @@
         { id: "w1n3", name: "Whispering Hollow", monster: "letterbat" },
         { id: "w1n4", name: "Snatchwing Nest", monster: "snatchwing" },
         { id: "w1n5", name: "Garbler's Cave", monster: "mumblemouth", boss: true }
+      ] },
+    { id: "murkfen", name: "Murkfen Marsh", icon: "🌫️", desc: "A foggy swamp where sight words sink from sight.",
+      unlockBoss: "mumblemouth", unlockText: "Defeat MUMBLEMOUTH in Whisperwood to enter.",
+      nodes: [
+        { id: "w2n1", name: "Soggy Trail", monster: "miremoth" },
+        { id: "w2n2", name: "Croaking Bog", monster: "bogblur" },
+        { id: "w2n3", name: "Foggy Fen", monster: "fogfiend" },
+        { id: "w2n4", name: "Silt Flats", monster: "siltslink" },
+        { id: "w2n5", name: "Wraith's Whirlpool", monster: "wipeout-wraith", boss: true }
+      ] },
+    { id: "gloomhollow", name: "Gloomhollow", icon: "🌑", desc: "A gloomy valley where slow readers lose their way.",
+      unlockBoss: "wipeout-wraith", unlockText: "Defeat the WIPEOUT WRAITH in Murkfen Marsh to enter.",
+      nodes: [
+        { id: "w3n1", name: "Drowsy Dell", monster: "sluggard" },
+        { id: "w3n2", name: "Drawling Cave", monster: "drawlbat" },
+        { id: "w3n3", name: "Hex Hollow", monster: "turtlehex" },
+        { id: "w3n4", name: "Sleepy Summit", monster: "drowsydrake" },
+        { id: "w3n5", name: "Throne of Slow", monster: "the-slowdown", boss: true }
       ] }
   ];
 
@@ -420,8 +460,149 @@
     { id: "charm", name: "Heart Charm", icon: "❤️", cost: 150,
       desc: "Permanent +10 max health for your current hero.", effect: "maxhp" },
     { id: "lucky", name: "Lucky Coin", icon: "🪙", cost: 100,
-      desc: "Double coins from your next battle.", effect: "lucky" }
+      desc: "Double coins from your next battle.", effect: "lucky" },
+    { id: "ring-river", name: "Riverstone Ring", icon: "💍", cost: 120,
+      desc: "A smooth stone that hums with spells. +15 max magic, +1 power. Find it in your Backpack!",
+      effect: "gear", gearId: "ring-river" }
   ];
+
+  /* ---------------- new-player systems content ---------------- */
+
+  /* Rotating loading tips, shown on the title screen and transitions. */
+  var TIPS = [
+    "Tip: wrong answers never hurt you. They only fizzle the spell!",
+    "Tip: tap Meditate in battle to refill your magic by answering a question.",
+    "Tip: rescued friends fight beside you. Open the Petbook to meet them!",
+    "Tip: gear from your Backpack makes your spells stronger.",
+    "Tip: each hero trains a different reading power. Switch at the Tower!",
+    "Tip: bosses guard the torn pages of the Great Book.",
+    "Tip: come back every day to open the gift box and grow your streak!",
+    "Tip: weaken a wild creature below 30% health, then RESCUE it!",
+    "Tip: your training tier adapts to you. Fast and accurate? You climb!",
+    "Tip: the shop sells potions, crystals, and the Riverstone Ring.",
+    "Tip: every world boss you beat unlocks a new land to explore.",
+    "Tip: Inkwell the owl always has a wise word. Talk to him at the Tower!"
+  ];
+
+  /* Scripted tutorial battle opponent: a harmless baby Mumblemouth. */
+  var TUTORIAL_MONSTER = {
+    id: "mumblekit", name: "Mumblekit", icon: "🐭", hp: 40, power: 0, xp: 0, coins: [0, 0],
+    intro: "Squeak! (Mumblekit is only a baby. It cannot hurt you. Perfect for practice!)"
+  };
+
+  /* Rescue tutorial creature: weakened below 30% HP, then freed. */
+  var RESCUE_MONSTER = {
+    id: "bristleback", name: "Bristleback", icon: "🦔", hp: 60, power: 5, xp: 30, coins: [15, 25],
+    rescuable: true, rarity: "Common",
+    petStats: { power: 3, hearts: 10, magic: 12, speed: 7 },
+    intro: "A wild Bristleback snuffles out of the bushes. It looks scared, not mean.",
+    outro: "Thank you for setting me free! I will fight beside you now!"
+  };
+
+  /* Starter familiar choice: pick one, it is yours. Evolves at hero level 7. */
+  var STARTER_FAMILIARS = [
+    { id: "pip", name: "Pip the Bookmouse", icon: "🐭", rarity: "Common",
+      desc: "Nibbles the boring corners off books.",
+      stats: { power: 2, hearts: 8, magic: 10, speed: 6 },
+      evolved: { name: "Pip the Pagekeeper", icon: "🐀",
+        stats: { power: 4, hearts: 12, magic: 14, speed: 7 } } },
+    { id: "hoot", name: "Hoot the Letter Owl", icon: "🦉", rarity: "Common",
+      desc: "Spots every letter, even in the dark.",
+      stats: { power: 2, hearts: 8, magic: 10, speed: 6 },
+      evolved: { name: "Hoot the Lorewing", icon: "🦅",
+        stats: { power: 4, hearts: 12, magic: 14, speed: 7 } } },
+    { id: "ripple", name: "Ripple the Inkfin", icon: "🐟", rarity: "Uncommon",
+      desc: "Swims through sentences like a river.",
+      stats: { power: 3, hearts: 10, magic: 12, speed: 7 },
+      evolved: { name: "Ripple the Tidecaller", icon: "🐬",
+        stats: { power: 5, hearts: 14, magic: 16, speed: 8 } } },
+    { id: "ember", name: "Ember the Storyspark", icon: "🔥", rarity: "Uncommon",
+      desc: "Every tale she hears lights a little fire.",
+      stats: { power: 3, hearts: 10, magic: 12, speed: 7 },
+      evolved: { name: "Ember the Taleblaze", icon: "🐉",
+        stats: { power: 5, hearts: 14, magic: 16, speed: 8 } } },
+    { id: "nova", name: "Nova the Starwhal", icon: "🐋", rarity: "Rare",
+      desc: "A whale who swims the sea of stars.",
+      stats: { power: 4, hearts: 12, magic: 14, speed: 9 },
+      evolved: { name: "Nova the Galaxwhal", icon: "🐳",
+        stats: { power: 6, hearts: 16, magic: 18, speed: 10 } } }
+  ];
+
+  /* Gear: equippable in the Backpack. Bonuses feed maxHp, power, maxMagic. */
+  var GEAR = [
+    { id: "wand-training", name: "Training Wand", icon: "🪄", slot: "wand",
+      power: 1, hp: 0, magic: 10,
+      desc: "A free gift from Bram. Every wizard starts here." },
+    { id: "cap-training", name: "Training Cap", icon: "🧢", slot: "hat",
+      power: 0, hp: 5, magic: 5,
+      desc: "A pointy cap that keeps your thoughts warm." },
+    { id: "garb-training", name: "Training Garb", icon: "🥋", slot: "garb",
+      power: 1, hp: 8, magic: 0,
+      desc: "Sturdy robes for a young battler." },
+    { id: "shoes-training", name: "Training Shoes", icon: "👟", slot: "boots",
+      power: 0, hp: 4, magic: 15,
+      desc: "Light shoes for quick thinking." },
+    { id: "ring-river", name: "Riverstone Ring", icon: "💍", slot: "ring",
+      power: 1, hp: 0, magic: 15,
+      desc: "A smooth stone that hums with spells." }
+  ];
+
+  var GEAR_SLOTS = [
+    { id: "wand", name: "Wand", icon: "🪄" },
+    { id: "hat", name: "Hat", icon: "🎩" },
+    { id: "garb", name: "Garb", icon: "🥋" },
+    { id: "boots", name: "Boots", icon: "👟" },
+    { id: "ring", name: "Ring", icon: "💍" }
+  ];
+
+  /* Tower NPCs with rotating tip lines. */
+  var NPCS = {
+    inkwell: { name: "Inkwell", title: "Keeper of the Great Book", icon: "🦉",
+      lines: [
+        "Hoo! Wrong answers never hurt you here. They only fizzle the spell, so keep trying!",
+        "When your magic runs low, tap Meditate and answer well to refill it.",
+        "The Unreader tore three pages from the Great Book. Each world boss holds one!",
+        "Rescued friends fight beside you. Open your Petbook to see your whole team.",
+        "Your training tier adapts to you. Answer fast and true, and you will climb!"
+      ] },
+    bram: { name: "Bram", title: "Shopkeep of the Tower", icon: "🧙‍♂️",
+      lines: [
+        "Psst! Gear in your Backpack makes your spells stronger. Come see my wares!",
+        "The Riverstone Ring hums with spells. Only 120 coins, friend!",
+        "Potions save heroes. Stock up before you face a boss!",
+        "Every hero needs a wand. Lucky for you, the first one is free!"
+      ] }
+  };
+
+  /* Wizard name picker: adjective + noun. Never the real name! */
+  var WIZARD_NAMES = {
+    adjectives: ["Brave", "Clever", "Merry", "Silent", "Starry", "Bold",
+                 "Quick", "Gentle", "Wild", "Lucky", "Sleepy", "Thunder"],
+    nouns: ["Fox", "Owl", "Badger", "Wren", "Otter", "Hawk",
+            "Mole", "Finch", "Bear", "Wolf", "Toad", "Lynx"]
+  };
+
+  /* Goals engine: checked on game events, gear rewards grant Wear/Not now. */
+  var GOALS = [
+    { id: "training", title: "Complete wizard training",
+      desc: "Finish the training battle with Inkwell.", reward: null },
+    { id: "pick-name", title: "Choose a wizard name",
+      desc: "Pick a fun name. Do not use your real name!", reward: null },
+    { id: "first-familiar", title: "Choose a familiar",
+      desc: "Pick one of the five starter friends.", reward: null },
+    { id: "first-rescue", title: "Rescue a wild friend",
+      desc: "Weaken a wild creature, then set it free.", reward: "shoes-training" },
+    { id: "win-3", title: "Win 3 battles",
+      desc: "Win any 3 battles out in the wild.", reward: "cap-training" },
+    { id: "w1-boss", title: "Defeat MUMBLEMOUTH",
+      desc: "Beat the boss of Whisperwood.", reward: "garb-training" },
+    { id: "page-2", title: "Reclaim the 2nd Keystone Page",
+      desc: "Defeat the Wipeout Wraith in Murkfen Marsh.", reward: null },
+    { id: "page-3", title: "Reclaim the 3rd Keystone Page",
+      desc: "Defeat The Slowdown in Gloomhollow.", reward: null }
+  ];
+
+  var DAILY = { baseCoins: 20, streakBonus: 5, streakCap: 10, itemChance: 0.25 };
 
   window.ContentPacks = window.ContentPacks || {};
   window.ContentPacks.reading = {
@@ -433,6 +614,17 @@
     monsters: MONSTERS,
     worlds: WORLDS,
     shop: SHOP,
+    tips: TIPS,
+    tutorialMonster: TUTORIAL_MONSTER,
+    rescueMonster: RESCUE_MONSTER,
+    starterFamiliars: STARTER_FAMILIARS,
+    gear: GEAR,
+    gearSlots: GEAR_SLOTS,
+    npcs: NPCS,
+    wizardNames: WIZARD_NAMES,
+    goals: GOALS,
+    daily: DAILY,
+    keystoneBosses: ["mumblemouth", "wipeout-wraith", "the-slowdown"],
     helpers: { pick: pick, shuffle: shuffle, sample: sample, band: band },
     /* XP needed (cumulative) to reach each level, index = level */
     xpTable: [0, 0, 30, 80, 150, 240, 350, 480, 630, 810, 1000],
