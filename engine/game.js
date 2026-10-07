@@ -365,11 +365,18 @@
           '<button class="rq-npc" id="npc-inkwell"><span class="rq-npcicon2">🦉</span><span>Inkwell<br><small>Talk</small></span></button>' +
           '<button class="rq-npc" id="npc-bram"><span class="rq-npcicon2">🧙‍♂️</span><span>Bram<br><small>Talk</small></span></button>' +
         '</div>' +
+        '<button class="rq-bigbtn" id="hub-explore">🧭 Explore the Wilds</button>' +
         '<p class="rq-tip">💡 ' + window.RQOnboard.randomTip() + '</p>';
       showScreen("screen-hub");
       this.wireHUD();
       $("npc-inkwell").addEventListener("click", function () { A.SFX.click(); self.npcTalk("inkwell"); });
       $("npc-bram").addEventListener("click", function () { A.SFX.click(); self.npcTalk("bram"); });
+      $("hub-explore").addEventListener("click", function () {
+        A.SFX.click();
+        var wid = pack().worlds[self._mapWorld || 0].id;
+        if (!S.zone(wid).unlocked) wid = pack().worlds[0].id;
+        self.showOverworld(wid);
+      });
       /* migrated saves: pick a grade once */
       if (!S.data.grade) {
         this.pickGradeModal(function () { self.showHub(); });
@@ -510,7 +517,12 @@
         if (i < w.nodes.length - 1) html += '<div class="rq-pathline">⬇</div>';
       });
       html += '</div>';
+      html += '<button class="rq-bigbtn" id="w-explore">🧭 Explore the Wilds</button>';
       body.innerHTML = html;
+      $("w-explore").addEventListener("click", function () {
+        window.RQAudio.SFX.click();
+        self.showOverworld(w.id);
+      });
       Array.prototype.forEach.call(body.querySelectorAll("[data-node]"), function (btn) {
         btn.addEventListener("click", function () {
           window.RQAudio.SFX.click();
@@ -557,7 +569,7 @@
           'Visit the shop for potions, then try again. Heroes never give up!</p>' +
           '<button class="rq-bigbtn" id="r-ok">Back to the Tower ➜</button>');
         ov.querySelector("#r-ok").addEventListener("click", function () {
-          ov.remove(); Game.showHub();
+          ov.remove(); self._returnAfterBattle();
         });
         return;
       }
@@ -609,13 +621,30 @@
               '<button class="rq-bigbtn" id="u-ok">ROAR! ➜</button>');
             A.SFX.unlock();
             bo.querySelector("#u-ok").addEventListener("click", function () {
-              bo.remove(); Game.showHub();
+              bo.remove(); self._returnAfterBattle();
             });
           });
         } else {
-          Game.showHub();
+          self._returnAfterBattle();
         }
       });
+    },
+
+    /* Where to go after a battle ends. Overworld roam battles set
+       _afterBattleReturn so winning out in the wilds returns to the
+       wilds; every other battle returns to the Tower hub. */
+    _afterBattleReturn: null,
+    _returnAfterBattle: function () {
+      var f = this._afterBattleReturn;
+      this._afterBattleReturn = null;
+      if (f) f(); else this.showHub();
+    },
+
+    /* ---------- overworld: walk the wilds, monsters roam ---------- */
+    showOverworld: function (worldId) {
+      if (window.RQOverworld && window.RQOverworld.open(worldId)) {
+        showScreen("screen-overworld");
+      }
     },
 
     /* ---------- 15. backpack: gear slots + stats + inventory ---------- */
