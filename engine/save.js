@@ -39,7 +39,7 @@
               /* v3 fields */
               wizardName: null, grade: null,
               onboardingDone: false, onboardingStep: null, guideMet: false,
-              wandGifted: false,
+              wandGifted: false, stageIntroSeen: false,
               goals: freshGoals(),
               petbook: [],
               seenMonsters: [],
@@ -77,6 +77,7 @@
     if (s.onboardingStep === undefined) s.onboardingStep = null;
     if (s.guideMet === undefined) s.guideMet = true;
     if (s.wandGifted === undefined) s.wandGifted = true;
+    if (s.stageIntroSeen === undefined) s.stageIntroSeen = false;
     if (!s.goals) s.goals = freshGoals();
     if (!s.petbook) s.petbook = [];
     if (!s.seenMonsters) s.seenMonsters = [];
