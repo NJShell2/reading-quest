@@ -308,12 +308,17 @@
     },
     markNodeBeaten: function (zoneId, nodeId) {
       var z = this.zone(zoneId);
-      if (z.nodesBeaten.indexOf(nodeId) === -1) z.nodesBeaten.push(nodeId);
-      /* boss beaten unlocks the next world */
       var worlds = pack().worlds, wi = this.worldIndex(zoneId);
-      var node = worlds[wi].nodes.filter(function (n) { return n.id === nodeId; })[0];
-      if (node && node.boss && wi + 1 < worlds.length) {
-        this.zone(worlds[wi + 1].id).unlocked = true;
+      /* Only real map nodes count toward progress. Overworld roam
+         battles pass pseudo-nodes (e.g. "ow-letterbat"); those grant
+         XP and coins but never mark map progress or unlock worlds. */
+      var node = wi >= 0 ? worlds[wi].nodes.filter(function (n) { return n.id === nodeId; })[0] : null;
+      if (node) {
+        if (z.nodesBeaten.indexOf(nodeId) === -1) z.nodesBeaten.push(nodeId);
+        /* boss beaten unlocks the next world */
+        if (node.boss && wi + 1 < worlds.length) {
+          this.zone(worlds[wi + 1].id).unlocked = true;
+        }
       }
       this.write();
     },
