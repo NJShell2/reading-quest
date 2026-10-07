@@ -34,6 +34,10 @@
     var s = { v: 3, coins: 25, activeHero: "knight",
               heroes: {}, beastsUnlocked: [], bossesBeaten: [],
               chestsOpened: 0, bestStreak: 0,
+              /* overworld maze continuity: per-maze defeated roaming
+                 monsters (by monster uid) and the pending encounter
+                 return spot { worldId, x, y, facing, monsterUid, isBoss } */
+              owDefeated: {}, owReturn: null,
               items: { potion: 1, crystal: 0, elixir: 0, lucky: 0 },
               luckyNext: false, elixirTurns: 0,
               /* v3 fields */
@@ -86,6 +90,8 @@
     if (!s.inventory) s.inventory = [];
     if (!s.pendingGiftGear) s.pendingGiftGear = [];
     if (!s.quests) s.quests = { main: null };
+    if (!s.owDefeated) s.owDefeated = {};
+    if (s.owReturn === undefined) s.owReturn = null;
 
     /* hero fields + legacy familiar migration */
     Object.keys(s.heroes).forEach(function (id) {
