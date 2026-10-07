@@ -1,7 +1,9 @@
 /* Reading Quest engine: onboarding and new-player widgets.
    Guide NPC dialogue, animated pointer, wand gift, tutorial victory,
-   goals panel, starter familiar choice, villain cutscene, wizard name
-   picker, and quest story cards. Pure UI; game.js owns screen flow. */
+   goals panel, starter familiar choice, wizard name picker, and quest
+   story cards. The story intro itself (Inkwell meets THE UNREADER,
+   the torn pages, the quest call) is the full-screen stage play in
+   engine/stage.js. Pure UI; game.js owns screen flow. */
 (function () {
   "use strict";
 
@@ -84,32 +86,6 @@
         OB[k] = null;
       });
       if (OB._target) { OB._target.classList.remove("rq-pointtarget"); OB._target = null; }
-    },
-
-    /* ---------- 3. Inkwell intro: teleports you to the Tower ---------- */
-    inkwellIntro: function (next) {
-      var npc = pack().npcs.inkwell;
-      window.RQSave.data.guideMet = true;
-      window.RQSave.write();
-      this.dialogue({
-        icon: npc.icon, name: npc.name, title: npc.title,
-        lastCta: "✨ Teleport me! ➜",
-        lines: [
-          "Hoo! Welcome to Reading Quest, young wizard! I am Inkwell, keeper of the Great Book.",
-          "A villain called THE UNREADER has torn the pages from the Great Book and scattered them!",
-          "Six heroes train here, each a master of one reading power. But first, every wizard needs training.",
-          "Close your eyes... hold your breath... TELEPORT!"
-        ],
-        onDone: function () {
-          window.RQAudio.SFX.unlock();
-          var flash = el("div", "rq-teleport");
-          document.body.appendChild(flash);
-          setTimeout(function () {
-            if (flash.parentNode) flash.parentNode.removeChild(flash);
-            next();
-          }, 900);
-        }
-      });
     },
 
     /* ---------- 4. FREE Training Wand gift ---------- */
@@ -282,75 +258,6 @@
           next();
         });
       });
-    },
-
-    /* ---------- 9. villain cutscene: THE UNREADER, on a theater stage ----------
-       Red velvet curtains, a spotlight cone, a wooden stage floor, and a
-       painted backdrop (the Great Book tower under a night sky). The
-       Unreader enters the stage from the wings. CSS/emoji only. */
-    villainCutscene: function (next) {
-      var S = window.RQSave, A = window.RQAudio;
-      if (!S.data.quests) S.data.quests = {};
-      S.data.quests.main = { id: "keystone", title: "Reclaim the Keystone Pages", revealed: true };
-      S.write();
-      var step = 0;
-      var ov = modal('<div id="rq-villain"></div>');
-      var box = $("rq-villain");
-      /* One reusable stage: backdrop, spotlight, floor, curtains, actor. */
-      function stage(actor, actorCls) {
-        return '<div class="rq-stage">' +
-          '<div class="rq-stagebackdrop">' +
-            '<span class="rq-bk-stars">✨ ⭐ ✨ ⭐ ✨</span>' +
-            '<span class="rq-bk-moon">🌕</span>' +
-            '<span class="rq-bk-tower">🏰</span>' +
-            '<span class="rq-bk-book">📖</span>' +
-            '<span class="rq-bk-treel">🌲</span>' +
-            '<span class="rq-bk-treer">🌲</span>' +
-          '</div>' +
-          '<div class="rq-spotlight"></div>' +
-          '<div class="rq-spotpool"></div>' +
-          '<div class="rq-stagefloor"></div>' +
-          '<div class="rq-curtain rq-curtain-left"></div>' +
-          '<div class="rq-curtain rq-curtain-right"></div>' +
-          '<div class="rq-valance"></div>' +
-          (actor ? '<div class="rq-actor ' + (actorCls || "") + '">' + actor + "</div>" : "") +
-        "</div>";
-      }
-      var steps = [
-        { html: stage("🌪️", "") +
-            "<h2>Something stirs...</h2>" +
-            "<p>The sky darkens over the Tower. Pages flutter in a sudden wind.</p>",
-          cta: "What is happening?! ➜" },
-        { html: stage("🌑", "rq-unreader rq-enters") +
-            "<h2>THE UNREADER</h2>" +
-            '<p class="rq-villainquote">"I am THE UNREADER! Words are noise. Stories are clutter. ' +
-            'I will erase every word in this world, starting with the Great Book!"</p>',
-          cta: "No! ➜", sfx: "boss" },
-        { html: stage("📄💥", "") +
-            "<h2>Pages torn!</h2>" +
-            "<p>The Unreader <b>tears the pages from the Great Book</b> and scatters them across the land! " +
-            "Each world boss now guards one torn page.</p>",
-          cta: "We will stop him! ➜", sfx: "hit" },
-        { html: stage("📜", "") +
-            "<h2>MAIN QUEST</h2>" +
-            '<div class="rq-questreveal">Reclaim the Keystone Pages<br><span>(0 of 3)</span></div>' +
-            "<p>Defeat each world boss to win back a torn page of the Great Book.</p>",
-          cta: "Accept the quest! ➜" }
-      ];
-      function show() {
-        var st = steps[step];
-        box.innerHTML = st.html +
-          '<button class="rq-bigbtn" id="rq-vnext">' + st.cta + "</button>";
-        if (st.sfx === "boss") A.SFX.boss();
-        if (st.sfx === "hit") A.SFX.hit();
-        $("rq-vnext").addEventListener("click", function () {
-          A.SFX.click();
-          step++;
-          if (step >= steps.length) { ov.remove(); next(); }
-          else show();
-        });
-      }
-      show();
     },
 
     /* ---------- 10. rescue intro ---------- */
