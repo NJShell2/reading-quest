@@ -10,6 +10,13 @@
      (f) overworld maze: layout, movement, walls, battle on contact
      (g) maze solvability: BFS spawn-to-boss reachable for every world,
          optimal path ramps with world index
+     (h) familiars (Petbook) screen: every button works, no JS errors
+         on render, Set Active switches the familiar, top-bar buttons
+         navigate without a refresh (Item 2 regression)
+     (i) maze continuity: encounter round trip restores exact x/y and
+         facing, defeated roam monsters stay gone across save/load,
+         fled-from monsters stay, boss/Keystone progression intact
+         (Item 3)
    Run: node tests/test.js */
 "use strict";
 
@@ -721,6 +728,196 @@ async function testG_maze() {
     "maze size grows with world index: " + sizes.join(" < ") + " tiles");
 }
 
+async function testH_familiars() {
+  console.log("-- (h) familiars screen: every button works, no JS errors (Item 2)");
+  freshSave();
+  S.data.onboardingDone = true;
+  S.data.grade = 2;
+  var nova = S.addPet({ defId: "nova", name: "Nova the Starwhal", icon: "🐋",
+    rarity: "Rare", stats: { power: 3, hearts: 10, magic: 12, speed: 6 },
+    evolved: false, rescued: true });
+  var bristle = S.addPet({ defId: "bristleback", name: "Bristleback", icon: "🦔",
+    rarity: "Common", stats: { power: 2, hearts: 8, magic: 10, speed: 6 },
+    evolved: false, rescued: true });
+  S.setActiveFamiliar("knight", nova.uid);
+
+  function clicks(elm) {
+    return (elm && elm._listeners && elm._listeners.click) ? elm._listeners.click.length : 0;
+  }
+  function topBtn(screenId, btnId) {
+    return $(screenId).querySelector("#" + btnId);
+  }
+
+  /* hub first, then familiars: this exact order left the Familiars
+     top bar dead before the wireHUD scoping fix. */
+  var threw = null;
+  try {
+    Game.showHub();
+    Game.showFamiliars();
+  } catch (e) { threw = e; }
+  assert(!threw, "showFamiliars renders with no JS errors" +
+    (threw ? " (got " + threw.message + ")" : ""));
+  assert($("screen-familiars").classList.contains("rq-active"),
+    "familiars screen is active");
+  var famScr = $("screen-familiars");
+
+  /* rescued-familiar flow (RESCUE badge fix) keeps rendering */
+  assert(famScr.querySelectorAll(".rq-rescuedstamp").length === 2,
+    "both rescued familiars show the Rescued stamp");
+  assert(famScr.querySelectorAll(".rq-rarity").length === 2,
+    "rarity badges render on both cards");
+
+  /* every top-bar button on THIS screen must own a working handler */
+  ["hud-menu", "hud-pack", "hud-fams", "hud-quests", "hud-shop", "hud-map"].forEach(function (id) {
+    var b = topBtn("screen-familiars", id);
+    assert(!!b && clicks(b) > 0, "familiars top bar: " + id + " has a click handler");
+  });
+
+  /* top-bar navigation actually switches screens, no refresh */
+  topBtn("screen-familiars", "hud-map").click();
+  assert($("screen-map").classList.contains("rq-active"), "hud-map navigates to the map screen");
+  topBtn("screen-map", "hud-shop").click();
+  assert($("screen-shop").classList.contains("rq-active"), "map hud-shop navigates to the shop");
+  topBtn("screen-shop", "hud-pack").click();
+  assert($("screen-backpack").classList.contains("rq-active"), "shop hud-pack navigates to the backpack");
+  topBtn("screen-backpack", "hud-menu").click();
+  assert(overlays() === 1, "backpack hud-menu opens the menu");
+  $("m-close").click();
+  assert(overlays() === 0, "menu closes");
+  topBtn("screen-backpack", "hud-quests").click();
+  assert(overlays() === 1, "backpack hud-quests opens the goals panel");
+  $("rq-gok").click();
+  assert(overlays() === 0, "goals panel closes");
+  topBtn("screen-backpack", "hud-fams").click();
+  assert($("screen-familiars").classList.contains("rq-active"),
+    "backpack hud-fams navigates back to familiars");
+  famScr = $("screen-familiars");
+
+  /* Set Active switches the active familiar and the card states update */
+  assert(S.hero("knight").familiar.uid === nova.uid, "Nova starts as the active familiar");
+  var setBtn = null;
+  famScr.querySelectorAll("[data-active]").forEach(function (b) {
+    if (b.getAttribute("data-active") === bristle.uid) setBtn = b;
+  });
+  assert(!!setBtn && clicks(setBtn) > 0, "inactive card offers a working Set Active button");
+  setBtn.click();
+  assert(S.hero("knight").familiar.uid === bristle.uid,
+    "Set Active switches the active familiar");
+  famScr = $("screen-familiars");
+  var activeBadges = famScr.querySelectorAll(".rq-activebadge");
+  assert(activeBadges.length === 1 &&
+         activeBadges[0].textContent.indexOf("Fighting now!") !== -1,
+    "re-render shows Fighting now! on the newly active card");
+  assert(famScr.querySelectorAll(".rq-rescuedstamp").length === 2,
+    "Rescued stamps survive the Set Active re-render");
+
+  /* the other HUD screens got scoped wiring too */
+  Game.showHub();
+  assert(clicks(topBtn("screen-hub", "hud-fams")) > 0, "hub top bar wired");
+  Game.showMap(0, false);
+  assert(clicks(topBtn("screen-map", "hud-fams")) > 0, "map top bar wired");
+  Game.showShop();
+  assert(clicks(topBtn("screen-shop", "hud-fams")) > 0, "shop top bar wired");
+  Game.showBackpack();
+  assert(clicks(topBtn("screen-backpack", "hud-fams")) > 0, "backpack top bar wired");
+}
+
+async function testI_maze() {
+  console.log("-- (i) maze continuity: round trip, defeated stay gone, fled stay (Item 3)");
+  freshSave();
+  S.data.onboardingDone = true;
+  S.data.grade = 2;
+  OW._onBattle = function () {}; /* stub: the battle never really runs */
+
+  assert(OW.open("whisperwood") === true, "overworld opens");
+  var mz = OW._maze;
+  /* park the wizard on an open tile a few tiles from the entrance */
+  var spot = null;
+  for (var y = 1; y < mz.spec.rows - 1 && !spot; y++) {
+    for (var x = 1; x < mz.spec.cols - 1; x++) {
+      if (!mz.grid[y][x] && mz.dist[y][x] > 2) { spot = { x: x + 0.5, y: y + 0.5 }; break; }
+    }
+  }
+  assert(!!spot, "found an open tile away from spawn");
+  OW._wizard.x = spot.x; OW._wizard.y = spot.y; OW._wizard.facing = "left";
+
+  var roam = null;
+  OW._monsters.forEach(function (mm) { if (!mm.isBoss && !roam) roam = mm; });
+  assert(!!roam && !!roam.uid, "roaming monster present with a uid");
+  var muid = roam.uid;
+
+  /* (1) encounter round trip: exact x/y and facing are captured */
+  OW._startBattle(roam);
+  assert(!OW.isOpen(), "overworld closes while battling");
+  var ret = S.data.owReturn;
+  assert(!!ret && ret.worldId === "whisperwood", "encounter position persisted in the save");
+  assert(ret.x === spot.x && ret.y === spot.y, "saved x/y match the encounter tile exactly");
+  assert(ret.facing === "left", "facing persisted across the battle");
+  assert(ret.monsterUid === muid && ret.isBoss === false, "pending monster recorded, not a boss");
+  assert(typeof Game._afterBattleReturn === "function", "return-to-overworld hook set");
+
+  /* victory records the defeated roam monster per maze */
+  OW.afterEncounter({ victory: true, xp: 10, coins: 5 });
+  assert((S.data.owDefeated["whisperwood"] || []).indexOf(muid) !== -1,
+    "defeated roam monster recorded in owDefeated");
+
+  /* returning lands on the identical tile, facing the same way */
+  Game._afterBattleReturn();
+  assert(OW.isOpen(), "battle returns to the overworld");
+  assert(OW._wizard.x === spot.x && OW._wizard.y === spot.y,
+    "wizard returns to the exact encounter coordinates");
+  assert(OW._wizard.facing === "left", "wizard keeps the same facing after the battle");
+  assert(S.data.owReturn === null, "pending return consumed after the round trip");
+  var stillThere = OW._monsters.some(function (mm) { return mm.uid === muid; });
+  assert(!stillThere, "defeated monster is gone from the board");
+
+  /* (2) the defeated monster stays gone across a save/load (refresh) */
+  S.write();
+  S.load();
+  OW.open("whisperwood");
+  var resurrected = OW._monsters.some(function (mm) { return mm.uid === muid; });
+  assert(!resurrected, "defeated monster stays gone after save/load");
+
+  /* (3) a fled-from monster is NOT removed */
+  var roam2 = null;
+  OW._monsters.forEach(function (mm) { if (!mm.isBoss && !roam2) roam2 = mm; });
+  assert(!!roam2, "another roaming monster still on the board");
+  var muid2 = roam2.uid;
+  OW._startBattle(roam2);
+  OW.afterEncounter({ victory: false, xp: 3 });
+  Game._afterBattleReturn();
+  var fled = OW._monsters.some(function (mm) { return mm.uid === muid2; });
+  assert(fled, "fled-from monster remains on the board");
+  assert((S.data.owDefeated["whisperwood"] || []).indexOf(muid2) === -1,
+    "fled-from monster not recorded as defeated");
+
+  /* roam pseudo-nodes never mark map progress (kept behavior) */
+  S.markNodeBeaten("whisperwood", "ow-letterbat-0");
+  assert(!S.nodeBeaten("whisperwood", "ow-letterbat-0"),
+    "roam pseudo-nodes still never mark map progress");
+
+  /* (4) boss progression intact: bosses stay out of owDefeated and the
+     real node id still drives Keystone/world-unlock progression */
+  var boss = null;
+  OW._monsters.forEach(function (mm) { if (mm.isBoss) boss = mm; });
+  assert(!!boss, "world boss waits at the maze destination");
+  OW._startBattle(boss);
+  assert(S.data.owReturn.isBoss === true, "boss encounter flagged as boss");
+  OW.afterEncounter({ victory: true, xp: 50, coins: 20, boss: true });
+  assert((S.data.owDefeated["whisperwood"] || []).indexOf(boss.uid) === -1,
+    "boss never lands in owDefeated");
+  S.data.bossesBeaten.push("mumblemouth"); /* what battle victory() records */
+  S.markNodeBeaten("whisperwood", "w1n5");
+  assert(S.zone("murkfen").unlocked === true,
+    "beating the world boss still unlocks the next world");
+  Game._afterBattleReturn();
+  var bossGone = !OW._monsters.some(function (mm) { return mm.isBoss; });
+  assert(bossGone, "beaten boss no longer waits at the destination");
+
+  OW._onBattle = null;
+  OW.close();
+}
+
 async function main() {
   try {
     await testA_familiarChoice();
@@ -731,6 +928,8 @@ async function main() {
     testE_emdashes();
     await testF_overworld();
     await testG_maze();
+    await testH_familiars();
+    await testI_maze();
   } catch (e) {
     failed++;
     console.log("UNCAUGHT EXCEPTION: " + (e && e.stack || e));
