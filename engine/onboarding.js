@@ -68,6 +68,9 @@
         var b = el("div", "rq-coachbubble", text);
         b.style.left = Math.min(window.innerWidth - 240, Math.max(4, r.left)) + "px";
         b.style.top = Math.max(4, r.top - 64) + "px";
+        /* Tap-to-dismiss: the bubble never traps the player. */
+        b.title = "Tap to dismiss";
+        b.addEventListener("click", function () { OB.clearPointer(); });
         document.body.appendChild(b);
         this._bubble = b;
       }
@@ -251,25 +254,40 @@
       });
       html += "</div>";
       var ov = modal(html);
+      var assigned = false;
       Array.prototype.forEach.call(ov.querySelectorAll("[data-fam]"), function (btn) {
         btn.addEventListener("click", function () {
+          /* One tap, one familiar: ignore repeats so a double-tap can
+             never stack two villain cutscenes on top of each other. */
+          if (assigned) return;
+          assigned = true;
+          btn.disabled = true;
           A.SFX.unlock();
-          var f = fams.filter(function (x) { return x.id === btn.getAttribute("data-fam"); })[0];
-          var pet = {
-            defId: f.id, name: f.name, icon: f.icon, rarity: f.rarity,
-            stats: JSON.parse(JSON.stringify(f.stats)),
-            evolved: false, rescued: false
-          };
-          S.addPet(pet);
-          S.setActiveFamiliar(S.data.activeHero, pet.uid);
-          S.completeGoal("first-familiar");
+          try {
+            var f = fams.filter(function (x) { return x.id === btn.getAttribute("data-fam"); })[0];
+            var pet = {
+              defId: f.id, name: f.name, icon: f.icon, rarity: f.rarity,
+              stats: JSON.parse(JSON.stringify(f.stats)),
+              evolved: false, rescued: false
+            };
+            S.addPet(pet);
+            S.setActiveFamiliar(S.data.activeHero, pet.uid);
+            S.completeGoal("first-familiar");
+          } catch (err) {
+            /* A save-layer hiccup must never strand the player: the
+               flow always advances to the villain cutscene. */
+            if (window.console && console.warn) console.warn("familiar assign failed:", err);
+          }
           ov.remove();
           next();
         });
       });
     },
 
-    /* ---------- 9. villain cutscene: THE UNREADER ---------- */
+    /* ---------- 9. villain cutscene: THE UNREADER, on a theater stage ----------
+       Red velvet curtains, a spotlight cone, a wooden stage floor, and a
+       painted backdrop (the Great Book tower under a night sky). The
+       Unreader enters the stage from the wings. CSS/emoji only. */
     villainCutscene: function (next) {
       var S = window.RQSave, A = window.RQAudio;
       if (!S.data.quests) S.data.quests = {};
@@ -278,27 +296,53 @@
       var step = 0;
       var ov = modal('<div id="rq-villain"></div>');
       var box = $("rq-villain");
+      /* One reusable stage: backdrop, spotlight, floor, curtains, actor. */
+      function stage(actor, actorCls) {
+        return '<div class="rq-stage">' +
+          '<div class="rq-stagebackdrop">' +
+            '<span class="rq-bk-stars">✨ ⭐ ✨ ⭐ ✨</span>' +
+            '<span class="rq-bk-moon">🌕</span>' +
+            '<span class="rq-bk-tower">🏰</span>' +
+            '<span class="rq-bk-book">📖</span>' +
+            '<span class="rq-bk-treel">🌲</span>' +
+            '<span class="rq-bk-treer">🌲</span>' +
+          '</div>' +
+          '<div class="rq-spotlight"></div>' +
+          '<div class="rq-spotpool"></div>' +
+          '<div class="rq-stagefloor"></div>' +
+          '<div class="rq-curtain rq-curtain-left"></div>' +
+          '<div class="rq-curtain rq-curtain-right"></div>' +
+          '<div class="rq-valance"></div>' +
+          (actor ? '<div class="rq-actor ' + (actorCls || "") + '">' + actor + "</div>" : "") +
+        "</div>";
+      }
       var steps = [
-        '<div class="rq-villainbg">🌑</div><h2>Something stirs...</h2>' +
-        '<p>The sky darkens over the Tower. Pages flutter in a sudden wind.</p>' +
-        '<button class="rq-bigbtn" id="rq-vnext">What is happening?! ➜</button>',
-        '<div class="rq-villainbg">🌑📖</div><h2>THE UNREADER</h2>' +
-        '<p class="rq-villainquote">"I am THE UNREADER! Words are noise. Stories are clutter. ' +
-        'I will erase every word in this world, starting with the Great Book!"</p>' +
-        '<button class="rq-bigbtn" id="rq-vnext">No! ➜</button>',
-        '<div class="rq-villainbg">📄💥</div><h2>Pages torn!</h2>' +
-        '<p>The Unreader <b>tears the pages from the Great Book</b> and scatters them across the land! ' +
-        'Each world boss now guards one torn page.</p>' +
-        '<button class="rq-bigbtn" id="rq-vnext">We will stop him! ➜</button>',
-        '<div class="rq-villainbg">📜</div><h2>MAIN QUEST</h2>' +
-        '<div class="rq-questreveal">Reclaim the Keystone Pages<br><span>(0 of 3)</span></div>' +
-        '<p>Defeat each world boss to win back a torn page of the Great Book.</p>' +
-        '<button class="rq-bigbtn" id="rq-vnext">Accept the quest! ➜</button>'
+        { html: stage("🌪️", "") +
+            "<h2>Something stirs...</h2>" +
+            "<p>The sky darkens over the Tower. Pages flutter in a sudden wind.</p>",
+          cta: "What is happening?! ➜" },
+        { html: stage("🌑", "rq-unreader rq-enters") +
+            "<h2>THE UNREADER</h2>" +
+            '<p class="rq-villainquote">"I am THE UNREADER! Words are noise. Stories are clutter. ' +
+            'I will erase every word in this world, starting with the Great Book!"</p>',
+          cta: "No! ➜", sfx: "boss" },
+        { html: stage("📄💥", "") +
+            "<h2>Pages torn!</h2>" +
+            "<p>The Unreader <b>tears the pages from the Great Book</b> and scatters them across the land! " +
+            "Each world boss now guards one torn page.</p>",
+          cta: "We will stop him! ➜", sfx: "hit" },
+        { html: stage("📜", "") +
+            "<h2>MAIN QUEST</h2>" +
+            '<div class="rq-questreveal">Reclaim the Keystone Pages<br><span>(0 of 3)</span></div>' +
+            "<p>Defeat each world boss to win back a torn page of the Great Book.</p>",
+          cta: "Accept the quest! ➜" }
       ];
       function show() {
-        box.innerHTML = steps[step];
-        if (step === 1) A.SFX.boss();
-        if (step === 2) A.SFX.hit();
+        var st = steps[step];
+        box.innerHTML = st.html +
+          '<button class="rq-bigbtn" id="rq-vnext">' + st.cta + "</button>";
+        if (st.sfx === "boss") A.SFX.boss();
+        if (st.sfx === "hit") A.SFX.hit();
         $("rq-vnext").addEventListener("click", function () {
           A.SFX.click();
           step++;
@@ -374,10 +418,26 @@
       ];
       var i = 0;
       var ov = modal('<div id="rq-storycards"></div>');
+      function miniStage(icon) {
+        return '<div class="rq-stage rq-stage-mini">' +
+          '<div class="rq-stagebackdrop">' +
+            '<span class="rq-bk-stars">✨ ⭐ ✨</span>' +
+            '<span class="rq-bk-moon">🌕</span>' +
+            '<span class="rq-bk-tower">🏰</span>' +
+            '<span class="rq-bk-book">📖</span>' +
+          "</div>" +
+          '<div class="rq-spotlight"></div>' +
+          '<div class="rq-stagefloor"></div>' +
+          '<div class="rq-curtain rq-curtain-left"></div>' +
+          '<div class="rq-curtain rq-curtain-right"></div>' +
+          '<div class="rq-valance"></div>' +
+          '<div class="rq-actor">' + icon + "</div>" +
+        "</div>";
+      }
       function show() {
         var c = cards[i];
         $("rq-storycards").innerHTML =
-          '<div class="rq-villainbg">' + c.icon + "</div><h2>" + c.title + "</h2><p>" + c.body + "</p>" +
+          miniStage(c.icon) + "<h2>" + c.title + "</h2><p>" + c.body + "</p>" +
           '<button class="rq-bigbtn" id="rq-scnext">' +
           (i === cards.length - 1 ? "Begin the quest! ➜" : "Next ➜") + "</button>";
         $("rq-scnext").addEventListener("click", function () {
