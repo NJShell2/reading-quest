@@ -1,5 +1,5 @@
 /* ============================================================
-   READING QUEST — Reading content pack
+   READING QUEST - Reading content pack
    This file is PURE CONTENT. The engine in ../engine/ never
    contains subject matter. A future subject (science, history,
    etc.) ships as one new file implementing the same interface:
