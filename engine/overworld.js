@@ -168,6 +168,9 @@
     _keyDown: null,
     _keyUp: null,
     _winExtra: [],
+    /* Pending overworld encounter: captured when a roam/boss battle
+       starts, consumed when the maze reopens after the battle. */
+    _pendingReturn: null,
     /* Injectable battle launcher (tests stub this). Default routes
        through Game.launchBattle like map node battles do. */
     _onBattle: null,
@@ -275,14 +278,28 @@
       }
       map.appendChild(grid);
 
-      /* wizard starts at the maze entrance */
+      /* wizard starts at the maze entrance, unless a battle just
+         ended (or a mid-battle refresh happened): then the saved
+         encounter position is restored so the round trip returns to
+         the exact tile, facing the same way. Consumed on use. */
+      var ret = S.data.owReturn;
       var def = S.heroDef(S.data.activeHero);
-      this._wizard = { x: mz.spawn.tx + 0.5, y: mz.spawn.ty + 0.5 };
+      var startX = mz.spawn.tx + 0.5, startY = mz.spawn.ty + 0.5, facing = "down";
+      if (ret && ret.worldId === w.id &&
+          typeof ret.x === "number" && typeof ret.y === "number") {
+        startX = ret.x; startY = ret.y; facing = ret.facing || "down";
+        S.data.owReturn = null;
+        S.write();
+      }
+      this._wizard = { x: startX, y: startY, facing: facing };
       this._wizEl = el("div", "rq-owsprite rq-ow-wizard", def ? def.icon : "🧙");
       map.appendChild(this._wizEl);
 
-      /* wandering monsters along the corridors */
+      /* wandering monsters along the corridors. Defeated roamers stay
+         gone: their uids are persisted per maze in the save, so a page
+         refresh cannot resurrect them. */
       this._monsters = [];
+      var defeated = (S.data.owDefeated && S.data.owDefeated[w.id]) || [];
       var seen = {};
       var defs = [];
       w.nodes.forEach(function (n) {
@@ -293,9 +310,11 @@
       var rnd = seededRand(spec.seed + 99);
       var spots = this._pickMonsterSpots(rnd, spec.monsters);
       for (var j = 0; j < spots.length && defs.length; j++) {
+        var uid = "ow-" + defs[j % defs.length].id + "-" + j;
+        if (defeated.indexOf(uid) !== -1) continue;
         var md2 = defs[j % defs.length];
         this._addMonster(map, md2,
-          { id: "ow-" + md2.id + "-" + j, name: md2.name + " of the wilds" },
+          { id: uid, name: md2.name + " of the wilds" },
           false, spots[j].tx + 0.5, spots[j].ty + 0.5, rnd);
       }
 
@@ -364,6 +383,7 @@
       var dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
       var m = {
         def: def, node: node, isBoss: !!isBoss,
+        uid: node.id,
         x: x, y: y,
         dir: dirs[Math.floor(rnd() * dirs.length)]
       };
@@ -546,6 +566,8 @@
       if (vx || vy) {
         this._dragTarget = null;
         var len = Math.sqrt(vx * vx + vy * vy);
+        if (Math.abs(vx) >= Math.abs(vy)) w.facing = vx > 0 ? "right" : "left";
+        else w.facing = vy > 0 ? "down" : "up";
         this._stepAxis(vx / len * step, 0);
         this._stepAxis(0, vy / len * step);
       } else if (this._dragTarget) {
@@ -555,6 +577,8 @@
         if (d < 0.2) {
           this._dragTarget = null;
         } else {
+          if (Math.abs(dx) >= Math.abs(dy)) w.facing = dx > 0 ? "right" : "left";
+          else w.facing = dy > 0 ? "down" : "up";
           this._stepAxis(dx / d * step, 0);
           this._stepAxis(0, dy / d * step);
         }
@@ -603,6 +627,18 @@
     _startBattle: function (m) {
       if (!this._open) return;
       var worldId = this._worldId;
+      /* Capture the exact encounter spot (same maze, same facing)
+         BEFORE the maze closes. Persisted in the save so the round
+         trip is seamless even across a mid-battle page refresh; the
+         maze consumes it when it reopens after the battle. */
+      var w = this._wizard;
+      var ret = { worldId: worldId,
+                  x: w ? w.x : null, y: w ? w.y : null,
+                  facing: w ? (w.facing || "down") : "down",
+                  monsterUid: m.uid || null, isBoss: !!m.isBoss };
+      this._pendingReturn = ret;
+      window.RQSave.data.owReturn = ret;
+      window.RQSave.write();
       this.close();
       var heroId = window.RQSave.data.activeHero;
       /* Winning (or retreating) out in the wilds returns to the wilds. */
@@ -613,6 +649,26 @@
         window.RQGame.launchBattle(wid, node, mon, hid);
       };
       launch(worldId, m.node, m.def, heroId);
+    },
+
+    /* Called by Game.afterBattle once the battle result is known. A
+       defeated roaming monster is recorded per maze in the save, so it
+       stays off the board across rebuilds and refreshes. Monsters the
+       player fled from (or lost to) are left alone. Bosses are tracked
+       through bossesBeaten / Keystone progression, never here. */
+    afterEncounter: function (res) {
+      var S = window.RQSave;
+      if (!S || !S.data) return;
+      var ret = this._pendingReturn || S.data.owReturn;
+      this._pendingReturn = null;
+      if (!ret || !ret.worldId) return;
+      if (res && res.victory && ret.monsterUid && !ret.isBoss) {
+        if (!S.data.owDefeated) S.data.owDefeated = {};
+        var arr = S.data.owDefeated[ret.worldId] ||
+                  (S.data.owDefeated[ret.worldId] = []);
+        if (arr.indexOf(ret.monsterUid) === -1) arr.push(ret.monsterUid);
+        S.write();
+      }
     },
 
     _paint: function () {
