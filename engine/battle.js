@@ -38,8 +38,16 @@
     return window.RQSave.hero(heroId).familiar || null;
   }
 
-  /* Shared arena shell used by normal and tutorial battles. */
+      /* Shared arena shell used by normal and tutorial battles. */
   function buildArena(mon, heroId) {
+    /* Safety: a battle always starts on a clean stage. Any overlay left
+       over from an earlier flow (double-tap, interrupted modal) is
+       removed so it can never cover the arena or trap the player. */
+    try {
+      Array.prototype.forEach.call(
+        document.querySelectorAll(".rq-overlay"),
+        function (o) { o.remove(); });
+    } catch (e) {}
     var S = window.RQSave;
     var def = S.heroDef(heroId), h = S.hero(heroId);
     var fam = familiarOf(heroId);
@@ -92,7 +100,7 @@
         magic: maxMagic, maxMagic: maxMagic,
         cooldowns: {}, streak: 0, best: 0,
         familiarHealUsed: false, over: false,
-        rescueOffered: false,
+        rescueOffered: false, rescueDone: false,
         xpEarned: 0, coinsEarned: 0
       };
       var fam = familiarOf(heroId);
@@ -171,17 +179,23 @@
           });
           bar.appendChild(fb);
         }
-        /* RESCUE paw badge: wild rescuable creature below 30% HP */
-        if (mon.rescuable && !state.rescueOffered && state.monHp > 0 &&
-            state.monHp / state.monMax < 0.3) {
+        /* RESCUE paw badge: wild rescuable creature below 30% HP.
+           Once offered, the badge is re-rendered on every item-bar
+           refresh until the rescue resolves: an earlier refresh must
+           never wipe it away while the player is deciding. */
+        var rescueReady = mon.rescuable && !state.rescueDone && state.monHp > 0 &&
+                          state.monHp / state.monMax < 0.3;
+        if (rescueReady && !state.rescueOffered) {
           state.rescueOffered = true;
+          A.SFX.unlock();
+          say(mon.name + " is weak! Tap RESCUE to set it free!");
+        }
+        if (state.rescueOffered && !state.rescueDone) {
           var rb = document.createElement("button");
           rb.className = "rq-rescuebadge"; rb.type = "button";
           rb.innerHTML = "🐾 RESCUE!";
           rb.addEventListener("click", rescueSequence);
           bar.appendChild(rb);
-          A.SFX.unlock();
-          say(mon.name + " is weak! Tap RESCUE to set it free!");
         }
       }
 
@@ -283,8 +297,12 @@
           "<h2>" + copy.title + "</h2><p>" + copy.body + "</p>" +
           '<button class="rq-bigbtn" id="rq-tier-ok">' + copy.cta + " ➜</button></div>";
         document.body.appendChild(ov);
-        $("rq-tier-ok").addEventListener("click", function () {
-          ov.remove(); done();
+        function dismissTier() { ov.remove(); done(); }
+        $("rq-tier-ok").addEventListener("click", dismissTier);
+        /* Tap outside the modal also dismisses it. The modal always
+           has a way out; it can never trap the battle. */
+        ov.addEventListener("click", function (ev) {
+          if (ev.target === ov) dismissTier();
         });
       }
 
@@ -307,6 +325,7 @@
         document.body.appendChild(ov);
         $("rq-free").addEventListener("click", function () {
           A.SFX.unlock();
+          state.rescueDone = true;
           ov.querySelector(".rq-modal").innerHTML =
             '<div class="rq-lightcol"><div class="rq-lightcritter">' + mon.icon + '</div></div>' +
             '<h2>' + mon.name + ' is free!</h2>';
