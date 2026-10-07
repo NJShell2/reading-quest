@@ -312,10 +312,17 @@
         '</div></div>';
     },
 
-    wireHUD: function () {
+    /* HUD buttons are wired scoped to the screen that owns them.
+       Screens are hidden by CSS class, never removed, so every HUD
+       screen carries duplicate hud-* element ids. A document-wide
+       getElementById would bind the visible buttons' handlers onto an
+       earlier screen's hidden duplicates, leaving the visible top bar
+       completely dead (the Familiars-page dead-button bug). */
+    wireHUD: function (root) {
       var self = this, A = window.RQAudio;
+      root = root || document;
       function go(id, fn) {
-        var b = $(id);
+        var b = root.querySelector("#" + id);
         if (b) b.addEventListener("click", function () { A.SFX.click(); fn(); });
       }
       go("hud-menu", function () { self.showMenu(); });
@@ -324,7 +331,7 @@
       go("hud-quests", function () { window.RQOnboard.goalsPanel(function () {}); });
       go("hud-shop", function () { self.showShop(); });
       go("hud-map", function () { self.showMap(self._mapWorld || 0, false); });
-      var gift = $("hud-gift");
+      var gift = root.querySelector("#hud-gift");
       if (gift && !gift.disabled) {
         gift.addEventListener("click", function () { self.claimDaily(); });
       }
@@ -379,7 +386,7 @@
         '<button class="rq-bigbtn" id="hub-explore">🧭 Explore the Wilds</button>' +
         '<p class="rq-tip">💡 ' + window.RQOnboard.randomTip() + '</p>';
       showScreen("screen-hub");
-      this.wireHUD();
+      this.wireHUD(s);
       $("npc-inkwell").addEventListener("click", function () { A.SFX.click(); self.npcTalk("inkwell"); });
       $("npc-bram").addEventListener("click", function () { A.SFX.click(); self.npcTalk("bram"); });
       $("hub-explore").addEventListener("click", function () {
@@ -475,7 +482,7 @@
       }
       s.innerHTML = html;
       showScreen("screen-map");
-      this.wireHUD();
+      this.wireHUD(s);
       this.renderWorldBody(this._mapWorld);
       Array.prototype.forEach.call(s.querySelectorAll("[data-world]"), function (tab) {
         tab.addEventListener("click", function () {
@@ -575,6 +582,11 @@
       var S = window.RQSave, A = window.RQAudio, self = this;
       var id = S.data.activeHero, def = S.heroDef(id);
       refreshCoins();
+      /* Overworld encounter bookkeeping first: a defeated roaming
+         monster is recorded in the save the moment victory is known,
+         so it stays off the board even if the page is refreshed on
+         the results modal. Fled-from monsters are left alone. */
+      if (window.RQOverworld) window.RQOverworld.afterEncounter(res);
       if (!res.victory) {
         var ov = modal('<h2>Safe retreat!</h2><p>You kept ' + res.xp + ' XP. ' +
           'Visit the shop for potions, then try again. Heroes never give up!</p>' +
@@ -694,7 +706,7 @@
       html += '</div>';
       s.innerHTML = html;
       showScreen("screen-backpack");
-      this.wireHUD();
+      this.wireHUD(s);
       Array.prototype.forEach.call(s.querySelectorAll("[data-equip]"), function (b) {
         b.addEventListener("click", function () {
           window.RQAudio.SFX.click();
@@ -751,7 +763,7 @@
       html += '</div>';
       s.innerHTML = html;
       showScreen("screen-familiars");
-      this.wireHUD();
+      this.wireHUD(s);
       Array.prototype.forEach.call(s.querySelectorAll("[data-active]"), function (b) {
         b.addEventListener("click", function () {
           window.RQAudio.SFX.click();
@@ -782,7 +794,7 @@
       html += '</div>';
       s.innerHTML = html;
       showScreen("screen-shop");
-      this.wireHUD();
+      this.wireHUD(s);
       Array.prototype.forEach.call(s.querySelectorAll("[data-item]"), function (btn) {
         btn.addEventListener("click", function () {
           var itemId = btn.getAttribute("data-item");
