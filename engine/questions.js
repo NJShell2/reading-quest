@@ -23,6 +23,19 @@
     return b;
   }
 
+  /* "Spell it" reads the word letter by letter with pauses. Next to
+     "Hear it" on spelling questions; easier to follow for young readers. */
+  function spellBtn(word) {
+    var b = el("button", "rq-speak", "🔤 Spell it");
+    b.type = "button";
+    b.addEventListener("click", function (ev) {
+      ev.stopPropagation();
+      window.RQAudio.ensure();
+      window.RQAudio.Speech.spell(word);
+    });
+    return b;
+  }
+
   function autoSpeak(text) {
     window.RQAudio.ensure();
     setTimeout(function () { window.RQAudio.Speech.say(text); }, 350);
@@ -107,7 +120,10 @@
       container.innerHTML = "";
       var box = el("div", "rq-q");
       box.appendChild(el("div", "rq-qprompt", q.prompt));
-      box.appendChild(speakBtn(q.answer));
+      var speakRow = el("div", "rq-speakrow");
+      speakRow.appendChild(speakBtn(q.answer));
+      speakRow.appendChild(spellBtn(q.answer));
+      box.appendChild(speakRow);
       autoSpeak(q.answer);
       var target = el("div", "rq-buildtarget", "");
       box.appendChild(target);
@@ -200,6 +216,17 @@
 
   window.RQQuestions = {
     ask: function (container, q) {
+      /* A question is starting: dismiss anything transient (coach
+         pointer + bubble, stray tooltips) so it can never sit on top
+         of the spelling tiles or answer buttons. */
+      try {
+        if (window.RQOnboard && window.RQOnboard.clearPointer) {
+          window.RQOnboard.clearPointer();
+        }
+        Array.prototype.forEach.call(
+          document.querySelectorAll(".rq-coachbubble, .rq-pointer"),
+          function (b) { b.remove(); });
+      } catch (e) {}
       var r = RENDERERS[q.kind] || choiceRenderer;
       return r(container, q);
     }
