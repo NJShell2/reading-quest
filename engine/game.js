@@ -1,6 +1,6 @@
 /* Reading Quest engine: screens and navigation.
-   Title -> grade select -> Inkwell intro -> classes -> wand gift ->
-   tutorial battle -> victory -> goals -> familiar -> villain cutscene ->
+   Title -> full-screen stage intro -> grade select -> classes -> wand gift ->
+   tutorial battle -> victory -> goals -> familiar ->
    rescue battle -> name picker -> world map -> quest cards -> hub.
    Hub/map carry the full HUD: portrait, quest tracker, coins, toolbar,
    gift box, NPCs. */
@@ -87,7 +87,7 @@
       $("t-start").addEventListener("click", function () {
         window.RQAudio.ensure(); window.RQAudio.SFX.click();
         self.stopTips();
-        if (!window.RQSave.data.onboardingDone) self.showGradeSelect();
+        if (!window.RQSave.data.onboardingDone) self.startStoryIntro();
         else self.showClasses();
       });
       $("t-reset").addEventListener("click", function () {
@@ -97,6 +97,16 @@
           Game.showTitle();
         }
       });
+    },
+
+    /* ---------- 0. full-screen theatrical story intro ----------
+       Curtains open on Inkwell and THE UNREADER; the torn pages set up
+       the quest. First viewing plays through; replays get a Skip
+       button. Afterwards the stage flows into grade selection. */
+    startStoryIntro: function () {
+      var self = this;
+      this.stopTips();
+      window.RQStage.play(function () { self.showGradeSelect(); });
     },
 
     /* ---------- 1. grade select (seeds adaptive tier) ---------- */
@@ -126,7 +136,7 @@
           window.RQAudio.SFX.click();
           var g = parseInt(card.getAttribute("data-grade"), 10);
           window.RQSave.setGrade(g);
-          window.RQOnboard.inkwellIntro(function () { self.showClasses(); });
+          self.showClasses();
         });
       });
     },
@@ -211,16 +221,17 @@
       });
     },
 
-    /* 6-13. post-tutorial chain, in spec order */
+    /* 6-13. post-tutorial chain, in spec order. The full-screen stage
+       intro already played the villain confrontation and the quest
+       call, so the chain goes straight from familiar choice to the
+       rescue tutorial. */
     afterTutorial: function () {
       var self = this, OB = window.RQOnboard;
       OB.tutorialVictory(function () {
         OB.goalsPanel(function () {          /* 7. auto-opens */
           OB.familiarChoice(function () {    /* 8. starter familiar */
-            OB.villainCutscene(function () { /* 9. THE UNREADER */
-              OB.rescueIntro(function () {   /* 10. rescue tutorial */
-                self.startRescueBattle();
-              });
+            OB.rescueIntro(function () {      /* 10. rescue tutorial */
+              self.startRescueBattle();
             });
           });
         });
