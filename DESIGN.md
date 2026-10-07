@@ -77,11 +77,21 @@ Implemented from `~/workspace/game-design/prodigy-opening-spec.md`, adapted (no 
 no purchases, no school mode, no ads). The exact new-player order:
 
 1. **Title** with rotating loading tips (`pack.tips`, new tip every 4s).
-2. **Grade select** (Grades 1-4): seeds every fresh hero's adaptive tier as
+2. **Full-screen theatrical story intro** (`engine/stage.js`, this game only):
+   red velvet curtains OPEN on a painted night-sky backdrop (moon, tower,
+   floating book) with a spotlight and wooden floor. Inkwell the owl guide
+   and THE UNREADER move on stage and talk through three scenes: Night at
+   the Tower (set the scene) -> The Unreader Strikes (villain confrontation,
+   the page-tearing moment, pages scatter) -> The Quest (the quest call:
+   **"Reclaim the Keystone Pages"**). Scripted dialogue beats with TTS
+   voices, character entrances/exits, and a scene title card per scene.
+   The dialogue is a testable state machine (`RQStage.createMachine`).
+   First viewing plays through; replays get a visible Skip button.
+   Completing or skipping saves `stageIntroSeen`, marks the guide met, and
+   reveals the main quest, then flows into grade select.
+3. **Grade select** (Grades 1-4): seeds every fresh hero's adaptive tier as
    `(grade-1)*2+1` (grade 1 -> tier 1, grade 2 -> tier 3, ...). The adaptive
    engine keeps working normally afterward.
-3. **Inkwell the owl** (guide NPC) intro dialogue, then a "teleport" flash to
-   the Tower hub flow (lands on hero select).
 4. **FREE Training Wand** gift from Bram the Shopkeep, with a Wear / Not now
    moment (Wear equips it, Not now puts it in the Backpack inventory).
 5. **Scripted tutorial battle vs Mumblekit** (`pack.tutorialMonster`, a harmless
@@ -104,25 +114,25 @@ no purchases, no school mode, no ads). The exact new-player order:
    with art, rarity ribbon (Common/Uncommon/Rare), 4 stats
    (Power/Hearts/Magic/Speed), and "Add to Team". The chosen familiar is per
    hero and **evolves at hero level 7** (new name, art, and boosted stats).
-9. **Villain cutscene**: THE UNREADER appears, tears pages from the Great Book
-   and scatters them -> main quest revealed: **"Reclaim the Keystone Pages"**
-   (one page per world boss, 0/3 tracker).
-10. **Rescue tutorial battle**: wild Bristleback (`pack.rescueMonster`). Weaken
+   (The villain confrontation and quest call already played in the
+   full-screen stage intro, so the chain continues straight to the rescue
+   tutorial.)
+9. **Rescue tutorial battle**: wild Bristleback (`pack.rescueMonster`). Weaken
     it below 30% HP -> a pulsing "RESCUE" paw badge appears -> panel shows
     rarity and "Owned: 0" -> Free -> light-column animation -> card with a
     "Rescued" stamp -> Claim -> added to the Petbook collection. The rescue
     mechanic is general: any monster flagged `rescuable` (Bristleback, Mire
     Moth, Sluggard) can be rescued the same way in normal battles.
-11. **Wizard name picker**: adjective + noun dropdowns + Random button, with a
+10. **Wizard name picker**: adjective + noun dropdowns + Random button, with a
     "Don't choose your real name!" warning. Saved as `save.wizardName` and
     shown in the HUD portrait.
-12. **World map with locked zones**: World 1 Whisperwood (boss MUMBLEMOUTH),
+11. **World map with locked zones**: World 1 Whisperwood (boss MUMBLEMOUTH),
     World 2 Murkfen Marsh (boss WIPEOUT WRAITH, sight-words themed), World 3
     Gloomhollow (boss THE SLOWDOWN, fluency themed). Each world has 4 nodes +
     a boss node. World 2 unlocks when the World 1 boss falls, World 3 when the
     World 2 boss falls. Nodes unlock sequentially within a world. Each world
     shows % completion (nodes beaten / total).
-13. **Quest chain intro**: story cards (what happened, what the pages do, your
+12. **Quest chain intro**: story cards (what happened, what the pages do, your
     quest) plus a persistent **quest tracker banner** in the HUD showing the
     current objective ("Reclaim the Keystone Pages (n/3), Next: ...").
 
