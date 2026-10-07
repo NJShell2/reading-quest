@@ -1,4 +1,4 @@
-/* Reading Quest — fantasy kid theme. Big buttons, juicy feedback. */
+/* Reading Quest - fantasy kid theme. Big buttons, juicy feedback. */
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 body {
   margin: 0; padding: 0;
@@ -141,6 +141,7 @@ h1, h2, h3 { text-align: center; color: #ffd75e; text-shadow: 2px 2px 0 #5b2d0e;
   background: #4a6e8e; border: 2px solid #7bc4ff; color: #fff; border-radius: 20px;
   padding: 8px 18px; font-size: 1rem; cursor: pointer; font-family: inherit; margin: 6px;
 }
+.rq-speakrow { display: flex; justify-content: center; flex-wrap: wrap; }
 .rq-timerwrap { background: #150d2e; border-radius: 8px; height: 12px; overflow: hidden; margin: 8px 0; }
 .rq-timerbar { background: linear-gradient(90deg, #ffd75e, #ff9d5c); height: 100%; width: 100%; }
 .rq-tray { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin: 12px 0; }
@@ -161,7 +162,10 @@ h1, h2, h3 { text-align: center; color: #ffd75e; text-shadow: 2px 2px 0 #5b2d0e;
 .rq-overlay { position: fixed; inset: 0; background: rgba(10, 5, 25, 0.82);
   display: flex; align-items: center; justify-content: center; z-index: 100; padding: 16px; }
 .rq-modal { background: #2c2154; border: 4px solid #e8b34b; border-radius: 18px;
-  padding: 24px; max-width: 480px; width: 100%; text-align: center; animation: rq-pop 0.35s; }
+  padding: 24px; max-width: 480px; width: 100%; text-align: center; animation: rq-pop 0.35s;
+  /* Tall content (e.g. all 5 familiar cards) scrolls inside the modal
+     instead of running off-screen with unreachable buttons. */
+  max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); overflow-y: auto; }
 .rq-results div { font-size: 1.2rem; margin: 6px 0; }
 .rq-levelup { font-size: 1.4rem; color: #9fe8a9; font-weight: bold; margin: 10px 0;
   animation: rq-bob 1.2s ease-in-out infinite; }
@@ -196,13 +200,15 @@ h1, h2, h3 { text-align: center; color: #ffd75e; text-shadow: 2px 2px 0 #5b2d0e;
 .rq-tip { text-align: center; color: #b9a8e8; font-size: 0.95rem; max-width: 560px; margin: 14px auto; font-style: italic; }
 .rq-sub2 { color: #d9c9a8; font-size: 0.9rem; margin: 6px 0; }
 
-/* animated pointer + coach bubble */
-.rq-pointer { position: fixed; z-index: 1000; font-size: 2.4rem; pointer-events: none;
+/* animated pointer + coach bubble.
+   The bubble sits BELOW modal overlays (z 90 < 100) so it can never
+   cover a dialog, and it is tap-to-dismiss so it never traps the player. */
+.rq-pointer { position: fixed; z-index: 90; font-size: 2.4rem; pointer-events: none;
   animation: rq-pointbounce 0.7s ease-in-out infinite; filter: drop-shadow(0 0 6px #ffd75e); }
 @keyframes rq-pointbounce { 0%,100% { transform: translateX(0); } 50% { transform: translateX(14px); } }
-.rq-coachbubble { position: fixed; z-index: 1000; max-width: 230px; background: #fff8e0; color: #3a2200;
+.rq-coachbubble { position: fixed; z-index: 90; max-width: 230px; background: #fff8e0; color: #3a2200;
   border: 3px solid #e8b34b; border-radius: 12px; padding: 8px 12px; font-size: 0.95rem;
-  pointer-events: none; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
+  pointer-events: auto; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
 .rq-pointtarget { outline: 4px solid #ffd75e !important; outline-offset: 3px; border-radius: 12px; }
 .rq-teleport { position: fixed; inset: 0; z-index: 2000; background: #fff;
   animation: rq-teleflash 0.9s ease; pointer-events: none; }
@@ -357,3 +363,91 @@ h1, h2, h3 { text-align: center; color: #ffd75e; text-shadow: 2px 2px 0 #5b2d0e;
   .rq-worldtabs { grid-template-columns: 1fr; }
   .rq-namerow { flex-direction: column; }
 }
+
+/* ---------- theatrical stage: villain cutscene + quest story cards ----------
+   Red velvet curtains, a spotlight cone from above, a wooden plank
+   stage floor, and a painted backdrop (the Great Book tower under a
+   night sky). CSS + emoji only. */
+.rq-stage { position: relative; height: 290px; border-radius: 14px; overflow: hidden;
+  background: #0b0618; border: 3px solid #7a4d12; margin: 4px 0 10px; }
+.rq-stage-mini { height: 190px; }
+.rq-stagebackdrop { position: absolute; inset: 0;
+  background: linear-gradient(#101033 0%, #2b1f5e 52%, #233d22 74%, #12200f 100%); }
+.rq-bk-stars { position: absolute; top: 5%; left: 0; right: 0; text-align: center;
+  letter-spacing: 12px; font-size: 0.85rem;
+  animation: rq-twinkle 2.2s ease-in-out infinite; }
+@keyframes rq-twinkle { 0%,100% { opacity: 0.4; } 50% { opacity: 1; } }
+.rq-bk-moon { position: absolute; top: 4%; left: 50%; margin-left: -22px; font-size: 2.4rem;
+  filter: drop-shadow(0 0 14px #fdf6d8); }
+.rq-bk-tower { position: absolute; bottom: 25%; left: 50%; transform: translateX(-50%);
+  font-size: 3.4rem; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.6)); }
+.rq-bk-book { position: absolute; bottom: 47%; left: 50%; margin-left: 36px; font-size: 1.9rem;
+  animation: rq-bob 2.5s ease-in-out infinite; filter: drop-shadow(0 0 8px #ffd75e); }
+.rq-bk-treel, .rq-bk-treer { position: absolute; bottom: 23%; font-size: 2.1rem; }
+.rq-bk-treel { left: 15%; }
+.rq-bk-treer { right: 15%; }
+.rq-spotlight { position: absolute; top: 0; left: 50%; width: 150px; height: 78%;
+  transform: translateX(-50%); z-index: 1;
+  background: linear-gradient(rgba(255,242,196,0.30), rgba(255,242,196,0.04));
+  clip-path: polygon(38% 0, 62% 0, 100% 100%, 0 100%); }
+.rq-spotpool { position: absolute; bottom: 19%; left: 50%; width: 190px; height: 44px;
+  transform: translateX(-50%); z-index: 1;
+  background: radial-gradient(ellipse at center, rgba(255,242,196,0.35) 0%, rgba(255,242,196,0) 70%); }
+.rq-stagefloor { position: absolute; left: 0; right: 0; bottom: 0; height: 24%;
+  background:
+    linear-gradient(rgba(255,255,255,0.14), rgba(255,255,255,0) 30%),
+    repeating-linear-gradient(90deg, #9c6a35 0 34px, #7c4f24 34px 37px);
+  border-top: 3px solid #5e3a18; }
+.rq-curtain { position: absolute; top: 0; bottom: 0; width: 23%; z-index: 3;
+  background: repeating-linear-gradient(90deg, #7a0f1a 0 12px, #b81f2d 12px 24px, #8e1420 24px 32px);
+  box-shadow: inset -6px 0 12px rgba(0,0,0,0.55), inset 6px 0 12px rgba(0,0,0,0.55); }
+.rq-curtain-left { left: 0; border-radius: 0 0 46% 0; }
+.rq-curtain-right { right: 0; border-radius: 0 0 0 46%; }
+.rq-valance { position: absolute; top: 0; left: 0; right: 0; height: 40px; z-index: 4;
+  background: repeating-linear-gradient(90deg, #7a0f1a 0 16px, #b81f2d 16px 32px);
+  border-bottom: 3px solid #e8b34b;
+  border-radius: 0 0 50% 50% / 0 0 100% 100%; }
+.rq-actor { position: absolute; bottom: 27%; left: 50%; transform: translateX(-50%);
+  font-size: 4.2rem; z-index: 2; filter: drop-shadow(0 6px 10px rgba(0,0,0,0.7)); }
+.rq-stage-mini .rq-actor { font-size: 3.1rem; bottom: 26%; }
+.rq-unreader { filter: drop-shadow(0 0 16px rgba(232,75,75,0.9)) drop-shadow(0 6px 10px rgba(0,0,0,0.7)); }
+/* The Unreader enters the stage from the wings. */
+.rq-enters { animation: rq-enter 1.5s ease-out; }
+@keyframes rq-enter {
+  0% { left: 4%; opacity: 0; transform: translateX(-50%) scale(0.5); }
+  55% { opacity: 1; }
+  100% { left: 50%; opacity: 1; transform: translateX(-50%) scale(1); }
+}
+
+/* ---------- overworld: walkable wilds ---------- */
+.rq-owwrap { max-width: 600px; margin: 0 auto; }
+.rq-owhead { display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; margin-bottom: 8px; }
+.rq-owtitle { font-size: 1.3rem; color: #ffd75e; font-weight: bold; }
+.rq-owsub { font-size: 0.8rem; color: #b9a8e8; margin-top: 2px; }
+.rq-owmap { position: relative; width: 100%; max-width: 560px; aspect-ratio: 4 / 3;
+  margin: 0 auto; border: 4px solid #7a4d12; border-radius: 14px; overflow: hidden;
+  touch-action: none; }
+.rq-ow-whisperwood { background: linear-gradient(#2d6a2d 0%, #3d8a3d 40%, #2a5e2a 100%); }
+.rq-ow-murkfen { background: linear-gradient(#3d5a4a 0%, #4a6e5a 45%, #2d4438 100%); }
+.rq-ow-gloomhollow { background: linear-gradient(#2a2438 0%, #3a3048 45%, #191423 100%); }
+.rq-ow-deco { position: absolute; transform: translate(-50%, -50%); font-size: 1.6rem;
+  opacity: 0.85; pointer-events: none; }
+.rq-owsprite { position: absolute; transform: translate(-50%, -50%); font-size: 2rem;
+  line-height: 1; pointer-events: none; }
+.rq-ow-wizard { font-size: 2.3rem; z-index: 5;
+  filter: drop-shadow(0 3px 4px rgba(0,0,0,0.5)); }
+.rq-ow-mon { z-index: 4; animation: rq-owbob 1.6s ease-in-out infinite; }
+@keyframes rq-owbob { 0%,100% { margin-top: 0; } 50% { margin-top: -6px; } }
+.rq-ow-boss { font-size: 3.1rem; animation: rq-owbosspulse 1.2s infinite; }
+@keyframes rq-owbosspulse {
+  0%,100% { filter: drop-shadow(0 0 4px rgba(232,75,75,0.4)); }
+  50% { filter: drop-shadow(0 0 14px rgba(232,75,75,0.9)); } }
+.rq-ow-bosstag { position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+  font-size: 0.7rem; font-weight: bold; color: #ff9d9d; white-space: nowrap; }
+.rq-joy { position: absolute; left: 12px; bottom: 12px; width: 110px; height: 110px;
+  border-radius: 50%; background: rgba(20,12,40,0.55); border: 3px solid #9b7bff;
+  z-index: 10; touch-action: none; }
+.rq-joyknob { position: absolute; left: 33px; top: 33px; width: 44px; height: 44px;
+  border-radius: 50%; background: radial-gradient(circle at 35% 35%, #d0b8ff, #7a5fc0);
+  border: 2px solid #e8b34b; pointer-events: none; }
