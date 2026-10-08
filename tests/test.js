@@ -17,6 +17,9 @@
          facing, defeated roam monsters stay gone across save/load,
          fled-from monsters stay, boss/Keystone progression intact
          (Item 3)
+     (j) bank select: RQBankSelect pick schema-valid across scopes/tiers,
+         tier 9 maps to 8, 20-question cooldown, buffer cap, tiny-pool
+         fallback, qcool save/load round trip
    Run: node tests/test.js */
 "use strict";
 
@@ -29,8 +32,10 @@ var ROOT = path.join(__dirname, "..");
 shim.install();
 
 ["engine/audio.js", "engine/save.js", "engine/adaptive.js", "engine/questions.js",
- "engine/battle.js", "engine/stage.js", "engine/onboarding.js", "engine/overworld.js",
- "engine/game.js", "content/reading-pack.js"].forEach(function (f) {
+ "engine/questionbank.js", "engine/battle.js", "engine/stage.js", "engine/onboarding.js",
+ "engine/overworld.js", "engine/game.js", "content/rq-bank-spelling.js",
+ "content/rq-bank-phonics.js", "content/rq-bank-vocabulary.js",
+ "content/rq-bank-comprehension.js", "content/reading-pack.js"].forEach(function (f) {
   vm.runInThisContext(fs.readFileSync(path.join(ROOT, f), "utf8"), { filename: f });
 });
 
@@ -565,8 +570,8 @@ async function testD_tts() {
 function testE_emdashes() {
   console.log("-- (e) em-dash scan of changed files");
   var files = ["engine/audio.js", "engine/save.js", "engine/adaptive.js",
-    "engine/questions.js", "engine/battle.js", "engine/stage.js",
-    "engine/onboarding.js",
+    "engine/questions.js", "engine/questionbank.js", "engine/battle.js",
+    "engine/stage.js", "engine/onboarding.js",
     "engine/overworld.js", "engine/game.js", "content/reading-pack.js",
     "css/style.css", "index.html"];
   files.forEach(function (f) {
@@ -918,6 +923,95 @@ async function testI_maze() {
   OW.close();
 }
 
+function testJ_bankselect() {
+  console.log("-- (j) bank select: RQBankSelect pick, cooldown, fallbacks");
+  freshSave();
+  var scopes = ["spelling", "phonics", "vocabulary", "comprehension"];
+  var kinds = { spelling: "build", phonics: "choice",
+                vocabulary: "choice", comprehension: "story" };
+  assert(typeof window.RQBankSelect === "object" &&
+         typeof window.RQBankSelect.pick === "function",
+         "RQBankSelect.pick exists");
+
+  /* qid -> bank tier, captured before picks mutate chosen.tier */
+  var origTier = {};
+  scopes.forEach(function (scope) {
+    window.RQBank[scope].forEach(function (q) { origTier[q.qid] = q.tier; });
+  });
+
+  /* (a) schema-valid picks for all scopes at tiers 1, 4, 8, 9 (9 maps to 8) */
+  [1, 4, 8, 9].forEach(function (tier) {
+    scopes.forEach(function (scope) {
+      var q = window.RQBankSelect.pick(scope, tier);
+      assert(q && typeof q.qid === "string" && q.kind === kinds[scope],
+        "pick " + scope + " t" + tier + " returns schema-valid question");
+      assert(origTier[q.qid] === Math.min(tier, 8),
+        "pick " + scope + " t" + tier + " draws from tier " + Math.min(tier, 8) + " pool");
+      if (kinds[scope] === "build") {
+        assert(Array.isArray(q.letters) && typeof q.answer === "string",
+          "build question has letters + string answer (" + scope + " t" + tier + ")");
+      } else if (kinds[scope] === "choice") {
+        assert(Array.isArray(q.choices) && q.choices.length > 0 &&
+               typeof q.answer === "number",
+          "choice question has choices + numeric answer (" + scope + " t" + tier + ")");
+      } else {
+        assert(typeof q.passage === "string" && Array.isArray(q.choices) &&
+               typeof q.answer === "number",
+          "story question has passage + choices (" + scope + " t" + tier + ")");
+      }
+    });
+  });
+
+  /* (b) cooldown: 100 picks with deterministic RNG, no qid repeats
+         within any 20-question window */
+  freshSave();
+  var realRandom = Math.random, i;
+  (function () {
+    var n = 0, seq = [];
+    for (i = 0; i < 140; i++) seq.push(((i * 0.6180339887) % 1 + 1) % 1);
+    Math.random = function () { var v = seq[n % seq.length]; n++; return v; };
+  })();
+  var seen = [];
+  for (i = 0; i < 100; i++) seen.push(window.RQBankSelect.pick("phonics", 4).qid);
+  Math.random = realRandom;
+  var clean = true, w;
+  for (w = 0; w + 20 <= seen.length; w++) {
+    var win = seen.slice(w, w + 20);
+    if (win.filter(function (x, idx) { return win.indexOf(x) !== idx; }).length) {
+      clean = false; break;
+    }
+  }
+  assert(clean, "cooldown: no qid repeats within any 20-question window over 100 picks");
+
+  /* (c) buffer capped at 20 after 40 picks */
+  freshSave();
+  for (i = 0; i < 40; i++) window.RQBankSelect.pick("spelling", 1);
+  assert(S.data.qcool.spelling.length === 20,
+    "cooldown buffer capped at 20 after 40 picks (got " +
+    S.data.qcool.spelling.length + ")");
+
+  /* (d) tiny-pool fallback: never throws, always returns a question */
+  var full = window.RQBank.spelling;
+  window.RQBank.spelling = full.slice(0, 5);
+  freshSave();
+  var threw = false, qd = null;
+  try {
+    for (i = 0; i < 40; i++) qd = window.RQBankSelect.pick("spelling", 1);
+  } catch (e) { threw = true; }
+  assert(!threw && qd && typeof qd.qid === "string",
+    "pool < 21: pick never throws and returns a question");
+  window.RQBank.spelling = full;
+
+  /* (e) cooldown buffers survive a save/load round trip */
+  freshSave();
+  for (i = 0; i < 25; i++) window.RQBankSelect.pick("vocabulary", 3);
+  var before = JSON.stringify(S.data.qcool);
+  S.write(); S.load();
+  assert(JSON.stringify(S.data.qcool) === before &&
+         S.data.qcool.vocabulary.length === 20,
+    "qcool buffers survive save/load round trip");
+}
+
 async function main() {
   try {
     await testA_familiarChoice();
@@ -930,6 +1024,7 @@ async function main() {
     await testG_maze();
     await testH_familiars();
     await testI_maze();
+    testJ_bankselect();
   } catch (e) {
     failed++;
     console.log("UNCAUGHT EXCEPTION: " + (e && e.stack || e));
