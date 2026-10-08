@@ -21,6 +21,16 @@
 
   function makeQuestion(heroId, def) {
     var tier = window.RQSave.hero(heroId).tier || 1;
+    var classId = (def && def.id) || "";
+    var base = def && def.baseClass ? def.baseClass : classId;
+    var scope = { knight: "phonics", monk: "phonics", wizard: "spelling",
+                  archer: "spelling", druid: "vocabulary",
+                  bard: "comprehension" }[base] || null;
+    if (scope && window.RQBankSelect) {
+      var q = window.RQBankSelect.pick(scope, tier);
+      if (q) return q;
+    }
+    /* old fallback: generated questions path, unchanged */
     var gens = def.gens || pack().classes[0].gens;
     var g = gens[ri(0, gens.length - 1)];
     var H = pack().helpers;
