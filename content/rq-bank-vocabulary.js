@@ -1407,9 +1407,9 @@
       "prompt": "What does \"built\" mean?",
       "choices": [
         "made by putting parts together",
-        "with a thin edge",
-        "had to have",
-        "feeling pain"
+        "with a very thin edge",
+        "had to have it now",
+        "feeling a lot of pain"
       ],
       "answer": 0
     },
@@ -2225,7 +2225,7 @@
       "tier": 2,
       "prompt": "What does \"rare\" mean?",
       "choices": [
-        "hardly ever",
+        "seen all the time",
         "talking big about yourself",
         "not seen often",
         "clean and in order"
@@ -2577,7 +2577,7 @@
       "prompt": "What does \"seldom\" mean?",
       "choices": [
         "thinks of others",
-        "not very often",
+        "every single day",
         "not ordinary",
         "hardly ever"
       ],
@@ -3189,7 +3189,7 @@
       "choices": [
         "opening your mouth wide when tired",
         "tired of doing nothing",
-        "done in a rush",
+        "moving very slowly",
         "moving very fast"
       ],
       "answer": 3
@@ -3967,10 +3967,10 @@
       "tier": 3,
       "prompt": "What does \"dazzling\" mean?",
       "choices": [
-        "super happy",
+        "very happy and glad",
         "so bright it hurts your eyes",
-        "soft and caring",
-        "wild and cruel"
+        "soft and full of care",
+        "wild and very cruel"
       ],
       "answer": 1
     },
@@ -6036,7 +6036,7 @@
       "choices": [
         "the middle point",
         "get the wrong meaning",
-        "the top of something",
+        "the bottom part",
         "the highest part"
       ],
       "answer": 3
@@ -6060,10 +6060,10 @@
       "tier": 4,
       "prompt": "What does \"front\" mean?",
       "choices": [
-        "way out",
-        "by yourself",
+        "the way that is out",
+        "all by yourself",
         "the part that faces forward",
-        "on all sides"
+        "on every single side"
       ],
       "answer": 2
     },
@@ -6216,10 +6216,10 @@
       "tier": 4,
       "prompt": "What does \"across\" mean?",
       "choices": [
-        "tell again",
+        "telling it all again",
         "from one side to the other",
-        "being strong",
-        "being slow"
+        "being very strong",
+        "being really slow"
       ],
       "answer": 1
     },
@@ -6229,10 +6229,10 @@
       "tier": 4,
       "prompt": "What does \"through\" mean?",
       "choices": [
-        "count again",
-        "past",
+        "counting it all again",
+        "went past it all",
         "going in one side and out the other",
-        "being free"
+        "being very free"
       ],
       "answer": 2
     },
@@ -6307,10 +6307,10 @@
       "tier": 4,
       "prompt": "What does \"toward\" mean?",
       "choices": [
-        "on top of",
-        "not sure",
+        "up on the very top",
+        "not sure at all",
         "going in the direction of",
-        "the far side"
+        "the side far away"
       ],
       "answer": 2
     },
@@ -6360,7 +6360,7 @@
       "prompt": "What does \"alone\" mean?",
       "choices": [
         "by yourself",
-        "done alone",
+        "with a friend",
         "underneath",
         "take away hope"
       ],
@@ -6453,7 +6453,7 @@
         "being warm",
         "not common",
         "fill again",
-        "one hundred"
+        "ten tens"
       ],
       "answer": 3
     },
@@ -6465,7 +6465,7 @@
       "choices": [
         "with each other",
         "the start",
-        "one thousand",
+        "ten hundreds",
         "one who helps"
       ],
       "answer": 2
@@ -7087,10 +7087,10 @@
       "tier": 5,
       "prompt": "What does \"prodigy\" mean?",
       "choices": [
-        "good at many things",
+        "good at lots of things",
         "a kid who is amazing at something",
-        "the very best at it",
-        "what you must do"
+        "the best one of all",
+        "what you have to do"
       ],
       "answer": 1
     },
@@ -7375,7 +7375,7 @@
       "choices": [
         "bounces back after trouble",
         "a way around",
-        "saying you will do it",
+        "a secret you keep",
         "a strong promise"
       ],
       "answer": 3
@@ -9066,7 +9066,7 @@
         "to give up on terms",
         "a trick to steal money",
         "did the bad act",
-        "the one who did it"
+        "the one who saw it"
       ],
       "answer": 2
     },
@@ -10116,10 +10116,10 @@
       "tier": 7,
       "prompt": "What does \"idiom\" mean?",
       "choices": [
-        "the tune",
+        "the tune you hum",
         "words that mean more than they say",
-        "music on paper",
-        "a big part of a play"
+        "music written on paper",
+        "a big part in a play"
       ],
       "answer": 1
     },
@@ -11184,7 +11184,7 @@
       "choices": [
         "a group playing together",
         "a song that tells a story",
-        "a wide wide view",
+        "a very wide view",
         "an afternoon show"
       ],
       "answer": 2
@@ -11496,7 +11496,7 @@
       "choices": [
         "a church tower",
         "too proud of yourself",
-        "loving yourself too much",
+        "being shy and quiet",
         "a wall that holds up a wall"
       ],
       "answer": 1
@@ -12654,7 +12654,7 @@
         "a warning sign",
         "to hold attention",
         "huge like the beast",
-        "a sign of what is coming"
+        "a sign of good luck"
       ],
       "answer": 0
     },
