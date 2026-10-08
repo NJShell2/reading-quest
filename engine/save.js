@@ -51,7 +51,10 @@
               daily: { lastClaim: null, streak: 0 },
               inventory: [],
               pendingGiftGear: [],
-              quests: { main: null } };
+              quests: { main: null },
+              /* bank question cooldown buffers (pass 4): last 20 qids
+                 asked per scope, so battles avoid repeats */
+              qcool: { spelling: [], phonics: [], vocabulary: [], comprehension: [] } };
     pack().classes.forEach(function (c) { s.heroes[c.id] = freshHero(); });
     pack().beasts.forEach(function (b) { s.heroes[b.id] = freshHero(); });
     return s;
@@ -92,6 +95,12 @@
     if (!s.quests) s.quests = { main: null };
     if (!s.owDefeated) s.owDefeated = {};
     if (s.owReturn === undefined) s.owReturn = null;
+
+    /* bank question cooldown buffers (pass 4): backfill for old saves */
+    if (!s.qcool) s.qcool = {};
+    ["spelling", "phonics", "vocabulary", "comprehension"].forEach(function (scope) {
+      if (!s.qcool[scope]) s.qcool[scope] = [];
+    });
 
     /* hero fields + legacy familiar migration */
     Object.keys(s.heroes).forEach(function (id) {
